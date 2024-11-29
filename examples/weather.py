@@ -6,6 +6,7 @@ import os
 import httpx
 from pydantic import BaseModel, Field
 from FlashMCP.server import FlashMCP
+from FlashMCP.utilities.logging import configure_logging
 
 # Load env vars
 API_KEY = os.getenv("OPENWEATHER_API_KEY")
@@ -117,13 +118,9 @@ app.add_dir_resource(
 
 def main():
     import asyncio
-    import logging
 
     # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    configure_logging(level="INFO")
 
     # Run the server
     asyncio.run(FlashMCP.run_stdio(app))

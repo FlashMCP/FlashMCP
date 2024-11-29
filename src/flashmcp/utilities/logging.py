@@ -1,33 +1,30 @@
 """Logging utilities for FlashMCP."""
+
 import logging
-from typing import Optional
+from typing import Literal
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
-    """Get a logger instance nested under the FlashMCP namespace.
-    
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger nested under FlashMCP namespace.
+
     Args:
-        name: Optional name to append to the FlashMCP namespace.
-            If provided, the logger will be named 'FlashMCP.[name]'.
-            If not provided, returns the root FlashMCP logger.
-    
+        name: The name of the logger, which will be prefixed with 'FlashMCP.'
+
     Returns:
         A configured logger instance
     """
-    logger_name = "FlashMCP"
-    if name:
-        logger_name = f"{logger_name}.{name}"
-    return logging.getLogger(logger_name)
+    return logging.getLogger(f"FlashMCP.{name}")
 
 
-def configure_logging(level: str = "INFO") -> None:
-    """Configure the root FlashMCP logger.
-    
+def configure_logging(
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO",
+) -> None:
+    """Configure logging for FlashMCP.
+
     Args:
-        level: The log level to use. Defaults to INFO.
+        level: The log level to use
     """
     logging.basicConfig(
-        level=getattr(logging, level.upper()),
+        level=level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    get_logger().setLevel(getattr(logging, level.upper()))

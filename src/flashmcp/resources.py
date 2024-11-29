@@ -3,7 +3,6 @@
 import abc
 import asyncio
 import json
-import logging
 from pathlib import Path
 from typing import Dict, Optional, Callable, Any
 from urllib.parse import parse_qs, urlparse
@@ -11,7 +10,9 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 from pydantic import BaseModel, field_validator
 
-logger = logging.getLogger("mcp")
+from .utilities.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class Resource(BaseModel):

@@ -1,11 +1,8 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
-import asyncio
 import base64
 import functools
 import json
-import logging
-from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Sequence, Union, Literal
 
 from mcp.server import Server as MCPServer
@@ -19,7 +16,7 @@ from pydantic_settings import BaseSettings
 from .exceptions import ResourceError
 from .resources import Resource, FunctionResource, ResourceManager
 from .tools import ToolManager
-from .utilities import get_logger, configure_logging
+from .utilities.logging import get_logger, configure_logging
 
 logger = get_logger(__name__)
 

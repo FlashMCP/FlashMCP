@@ -1,15 +1,15 @@
 """FlashMCP CLI tools."""
 
 import importlib.metadata
-import logging
 import subprocess
 import sys
 from pathlib import Path
 
 import typer
 
-# Configure logging
-logger = logging.getLogger("mcp")
+from .utilities.logging import get_logger
+
+logger = get_logger(__name__)
 
 app = typer.Typer(
     name="FlashMCP",

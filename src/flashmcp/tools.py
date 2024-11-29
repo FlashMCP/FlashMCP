@@ -6,9 +6,9 @@ from typing import Any, Callable, Dict, Optional
 from pydantic import BaseModel, Field, TypeAdapter
 
 from .exceptions import ToolError
-import logging
+from .utilities.logging import get_logger
 
-logger = logging.getLogger("FlashMCP")
+logger = get_logger(__name__)
 
 
 class Tool(BaseModel):
@@ -84,7 +84,7 @@ class ToolManager:
         existing = self._tools.get(tool.name)
         if existing:
             if self.warn_on_duplicate_tools:
-                logging.warning(f"Tool already exists: {tool.name}")
+                logger.warning(f"Tool already exists: {tool.name}")
             return existing
         self._tools[tool.name] = tool
         return tool
