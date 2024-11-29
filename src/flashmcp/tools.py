@@ -1,7 +1,6 @@
 """Tool management for FlashMCP."""
 
 import inspect
-import warnings
 from typing import Any, Callable, Dict, Optional
 
 from pydantic import BaseModel, Field, TypeAdapter
@@ -85,11 +84,7 @@ class ToolManager:
         existing = self._tools.get(tool.name)
         if existing:
             if self.warn_on_duplicate_tools:
-                warnings.warn(
-                    f"Tool already exists: {tool.name}",
-                    ResourceWarning,
-                    stacklevel=2,
-                )
+                logging.warning(f"Tool already exists: {tool.name}")
             return existing
         self._tools[tool.name] = tool
         return tool

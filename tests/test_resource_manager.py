@@ -1,4 +1,4 @@
-import warnings
+import logging
 import pytest
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -276,8 +276,9 @@ class TestResourceManagerAdd:
                 path=Path("test.txt"),
             )
 
-    def test_warn_on_duplicate_resources(self):
+    def test_warn_on_duplicate_resources(self, caplog):
         """Test warning on duplicate resources."""
+        caplog.set_level(logging.WARNING, logger="mcp")
         manager = ResourceManager()
         resource = FileResource(
             uri="file:///test.txt",
@@ -285,11 +286,12 @@ class TestResourceManagerAdd:
             path=Path("/test.txt"),
         )
         manager.add_resource(resource)
-        with pytest.warns(ResourceWarning):
-            manager.add_resource(resource)
+        manager.add_resource(resource)
+        assert "Resource already exists: file:///test.txt" in caplog.text
 
-    def test_disable_warn_on_duplicate_resources(self):
+    def test_disable_warn_on_duplicate_resources(self, caplog):
         """Test disabling warning on duplicate resources."""
+        caplog.set_level(logging.WARNING, logger="mcp")
         manager = ResourceManager()
         resource = FileResource(
             uri="file:///test.txt",
@@ -298,9 +300,8 @@ class TestResourceManagerAdd:
         )
         manager.add_resource(resource)
         manager.warn_on_duplicate_resources = False
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            manager.add_resource(resource)
+        manager.add_resource(resource)
+        assert "Resource already exists: file:///test.txt" not in caplog.text
 
 
 class TestResourceManagerRead:

@@ -4,7 +4,6 @@ import abc
 import asyncio
 import json
 import logging
-import warnings
 from pathlib import Path
 from typing import Dict, Optional, Callable, Any
 from urllib.parse import parse_qs, urlparse
@@ -226,11 +225,7 @@ class ResourceManager:
         existing = self._resources.get(resource.uri)
         if existing:
             if self.warn_on_duplicate_resources:
-                warnings.warn(
-                    f"Resource already exists: {resource.uri}",
-                    ResourceWarning,
-                    stacklevel=2,
-                )
+                logger.warning(f"Resource already exists: {resource.uri}")
             return existing
         self._resources[resource.uri] = resource
         return resource

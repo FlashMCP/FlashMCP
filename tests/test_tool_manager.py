@@ -1,5 +1,4 @@
-import warnings
-
+import logging
 import pytest
 from pydantic import BaseModel
 
@@ -83,7 +82,7 @@ class TestAddTools:
         ):
             manager.add_tool(lambda x: x)
 
-    def test_warn_on_duplicate_tools(self):
+    def test_warn_on_duplicate_tools(self, caplog):
         """Test warning on duplicate tools."""
 
         def f(x: int) -> int:
@@ -91,10 +90,11 @@ class TestAddTools:
 
         manager = ToolManager()
         manager.add_tool(f)
-        with pytest.warns(ResourceWarning):
+        with caplog.at_level(logging.WARNING):
             manager.add_tool(f)
+            assert "Tool already exists: f" in caplog.text
 
-    def test_disable_warn_on_duplicate_tools(self):
+    def test_disable_warn_on_duplicate_tools(self, caplog):
         """Test disabling warning on duplicate tools."""
 
         def f(x: int) -> int:
@@ -103,9 +103,9 @@ class TestAddTools:
         manager = ToolManager()
         manager.add_tool(f)
         manager.warn_on_duplicate_tools = False
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
+        with caplog.at_level(logging.WARNING):
             manager.add_tool(f)
+            assert "Tool already exists: f" not in caplog.text
 
 
 class TestCallTools:
