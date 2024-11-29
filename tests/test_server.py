@@ -1,13 +1,13 @@
 from mcp.shared.memory import (
     create_connected_server_and_client_session as client_session,
 )
-from FlashMCP.server import FlashMCPServer
+from FlashMCP.server import FlashMCP
 
 
 class TestServer:
     async def test_create_server(self):
-        server = FlashMCPServer()
-        assert server.name == "FlashMCPServer"
+        server = FlashMCP()
+        assert server.name == "FlashMCP"
 
 
 def tool_fn(x: int, y: int) -> int:
@@ -16,20 +16,20 @@ def tool_fn(x: int, y: int) -> int:
 
 class TestServerTools:
     async def test_add_tool(self):
-        server = FlashMCPServer()
+        server = FlashMCP()
         server.add_tool(tool_fn)
         server.add_tool(tool_fn)
         assert len(server._tool_manager.list_tools()) == 1
 
     async def test_list_tools(self):
-        server = FlashMCPServer()
+        server = FlashMCP()
         server.add_tool(tool_fn)
         async with client_session(server._mcp_server) as client:
             tools = await client.list_tools()
             assert len(tools.tools) == 1
 
     async def test_call_tool(self):
-        server = FlashMCPServer()
+        server = FlashMCP()
         server.add_tool(tool_fn)
         async with client_session(server._mcp_server) as client:
             result = await client.call_tool("my_tool", {"arg1": "value"})

@@ -5,7 +5,7 @@ FlashMCP Weather Server Example
 import os
 import httpx
 from pydantic import BaseModel, Field
-from FlashMCP.server import FlashMCPServer
+from FlashMCP.server import FlashMCP
 
 # Load env vars
 API_KEY = os.getenv("OPENWEATHER_API_KEY")
@@ -32,7 +32,7 @@ class AlertParams(BaseModel):
 
 
 # Create server
-app = FlashMCPServer("weather-service")
+app = FlashMCP("weather-service")
 
 
 # Tools using Pydantic models
@@ -126,7 +126,7 @@ def main():
     )
 
     # Run the server
-    asyncio.run(FlashMCPServer.run_stdio(app))
+    asyncio.run(FlashMCP.run_stdio(app))
 
 
 if __name__ == "__main__":

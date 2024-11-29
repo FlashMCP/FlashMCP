@@ -1,13 +1,16 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
+import asyncio
 import base64
 import functools
 import json
 import logging
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Sequence, Union, Literal
 
 from mcp.server import Server as MCPServer
 from mcp.server.stdio import stdio_server
+from mcp.server.sse import SseServerTransport
 from mcp.types import Resource as MCPResource
 from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 from pydantic import BaseModel
@@ -16,9 +19,9 @@ from pydantic_settings import BaseSettings
 from .exceptions import ResourceError
 from .resources import Resource, FunctionResource, ResourceManager
 from .tools import ToolManager
+from .utilities import get_logger, configure_logging
 
-
-logger = logging.getLogger("FlashMCP")
+logger = get_logger(__name__)
 
 
 class Settings(BaseSettings):
@@ -45,10 +48,10 @@ class Settings(BaseSettings):
     warn_on_duplicate_tools: bool = True
 
 
-class FlashMCPServer:
+class FlashMCP:
     def __init__(self, name=None, **settings: Optional[Settings]):
         self.settings = Settings(**settings)
-        self._mcp_server = MCPServer(name=name or "FlashMCPServer")
+        self._mcp_server = MCPServer(name=name or "FlashMCP")
         self._tool_manager = ToolManager(
             warn_on_duplicate_tools=self.settings.warn_on_duplicate_tools
         )
@@ -57,11 +60,7 @@ class FlashMCPServer:
         )
 
         # Configure logging
-        logging.basicConfig(
-            level=getattr(logging, self.settings.log_level.upper()),
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
-        logger.setLevel(getattr(logging, self.settings.log_level.upper()))
+        configure_logging(self.settings.log_level)
 
         self._setup_handlers()
 
@@ -297,7 +296,7 @@ class FlashMCPServer:
         await self._mcp_server.run(*args, **kwargs)
 
     @classmethod
-    async def run_stdio(cls, app: "FlashMCPServer") -> None:
+    async def run_stdio(cls, app: "FlashMCP") -> None:
         """Run the server using stdio transport."""
         async with stdio_server() as (read_stream, write_stream):
             await app.run(
@@ -309,7 +308,7 @@ class FlashMCPServer:
     @classmethod
     async def run_sse(
         cls,
-        app: "FlashMCPServer",
+        app: "FlashMCP",
     ) -> None:
         """Run the server using SSE transport."""
         from mcp.server.sse import SseServerTransport
