@@ -67,50 +67,54 @@ class FlashMCP:
 
     def _setup_handlers(self) -> None:
         """Set up core MCP protocol handlers."""
+        self._mcp_server.list_tools()(self.list_tools)
+        self._mcp_server.call_tool()(self.call_tool)
+        self._mcp_server.list_resources()(self.list_resources)
+        self._mcp_server.read_resource()(self.read_resource)
 
-        @self._mcp_server.list_tools()
-        async def handle_list_tools() -> list[Tool]:
-            tools = self._tool_manager.list_tools()
-            return [
-                Tool(
-                    name=info.name,
-                    description=info.description,
-                    inputSchema=info.parameters,
-                )
-                for info in tools
-            ]
+    async def list_tools(self) -> list[Tool]:
+        """List all available tools."""
+        tools = self._tool_manager.list_tools()
+        return [
+            Tool(
+                name=info.name,
+                description=info.description,
+                inputSchema=info.parameters,
+            )
+            for info in tools
+        ]
 
-        @self._mcp_server.call_tool()
-        async def handle_call_tool(
-            name: str, arguments: dict
-        ) -> Sequence[Union[TextContent, ImageContent, EmbeddedResource]]:
-            result = await self._tool_manager.call_tool(name, arguments)
-            return [self._convert_to_content(result)]
+    async def call_tool(
+        self, name: str, arguments: dict
+    ) -> Sequence[Union[TextContent, ImageContent, EmbeddedResource]]:
+        """Call a tool by name with arguments."""
+        result = await self._tool_manager.call_tool(name, arguments)
+        return [self._convert_to_content(result)]
 
-        @self._mcp_server.list_resources()
-        async def handle_list_resources() -> list[MCPResource]:
-            resources = self._resource_manager.list_resources()
-            return [
-                MCPResource(
-                    uri=resource.uri,
-                    name=resource.name,
-                    description=resource.description,
-                    mimeType=resource.mime_type,
-                )
-                for resource in resources
-            ]
+    async def list_resources(self) -> list[MCPResource]:
+        """List all available resources."""
+        resources = self._resource_manager.list_resources()
+        return [
+            MCPResource(
+                uri=resource.uri,
+                name=resource.name,
+                description=resource.description,
+                mimeType=resource.mime_type,
+            )
+            for resource in resources
+        ]
 
-        @self._mcp_server.read_resource()
-        async def handle_read_resource(uri: str) -> Union[str, bytes]:
-            resource = self._resource_manager.get_resource(uri)
-            if not resource:
-                raise ResourceError(f"Unknown resource: {uri}")
+    async def read_resource(self, uri: str) -> Union[str, bytes]:
+        """Read a resource by URI."""
+        resource = self._resource_manager.get_resource(uri)
+        if not resource:
+            raise ResourceError(f"Unknown resource: {uri}")
 
-            try:
-                return await resource.read()
-            except Exception as e:
-                logger.error(f"Error reading resource {uri}: {e}")
-                raise ResourceError(str(e))
+        try:
+            return await resource.read()
+        except Exception as e:
+            logger.error(f"Error reading resource {uri}: {e}")
+            raise ResourceError(str(e))
 
     def _convert_to_content(
         self, value: Any
@@ -143,6 +147,7 @@ class FlashMCP:
         self, name: Optional[str] = None, description: Optional[str] = None
     ) -> Callable:
         """Decorator to register a tool."""
+        breakpoint()
 
         def decorator(func: Callable) -> Callable:
             self.add_tool(func, name=name, description=description)
@@ -308,7 +313,6 @@ class FlashMCP:
         app: "FlashMCP",
     ) -> None:
         """Run the server using SSE transport."""
-        from mcp.server.sse import SseServerTransport
         from starlette.applications import Starlette
         from starlette.routing import Route
         import uvicorn
