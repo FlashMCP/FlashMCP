@@ -1,11 +1,15 @@
 """Tool management for FlashMCP."""
 
 import inspect
+import warnings
 from typing import Any, Callable, Dict, Optional
 
 from pydantic import BaseModel, Field, TypeAdapter
 
 from .exceptions import ToolError
+import logging
+
+logger = logging.getLogger("FlashMCP")
 
 
 class Tool(BaseModel):
@@ -54,8 +58,9 @@ class Tool(BaseModel):
 class ToolManager:
     """Manages FlashMCP tools."""
 
-    def __init__(self):
+    def __init__(self, warn_on_duplicate_tools: bool = True):
         self._tools: Dict[str, Tool] = {}
+        self.warn_on_duplicate_tools = warn_on_duplicate_tools
 
     def get_tool(self, name: str) -> Optional[Tool]:
         """Get tool by name."""
@@ -70,10 +75,20 @@ class ToolManager:
         func: Callable,
         name: Optional[str] = None,
         description: Optional[str] = None,
-    ) -> None:
+    ) -> Tool:
         """Add a tool to the server."""
         tool = Tool.from_function(func, name=name, description=description)
+        existing = self._tools.get(tool.name)
+        if existing:
+            if self.warn_on_duplicate_tools:
+                warnings.warn(
+                    f"Tool already exists: {tool.name}",
+                    ResourceWarning,
+                    stacklevel=2,
+                )
+            return existing
         self._tools[tool.name] = tool
+        return tool
 
     async def call_tool(self, name: str, arguments: dict) -> Any:
         """Call a tool by name with arguments."""

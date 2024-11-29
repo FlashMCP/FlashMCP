@@ -1,4 +1,4 @@
-"""Test tool registration and execution."""
+import warnings
 
 import pytest
 from pydantic import BaseModel
@@ -70,6 +70,35 @@ class TestAddTools:
         manager = ToolManager()
         with pytest.raises(AttributeError):
             manager.add_tool(1)
+
+    def test_add_lambda(self):
+        manager = ToolManager()
+        manager.add_tool(lambda x: x)
+        assert len(manager.list_tools()) == 1
+
+    def test_warn_on_duplicate_tools(self):
+        """Test warning on duplicate tools."""
+
+        def f(x: int) -> int:
+            return x
+
+        manager = ToolManager()
+        manager.add_tool(f)
+        with pytest.warns(ResourceWarning):
+            manager.add_tool(f)
+
+    def test_disable_warn_on_duplicate_tools(self):
+        """Test disabling warning on duplicate tools."""
+
+        def f(x: int) -> int:
+            return x
+
+        manager = ToolManager()
+        manager.add_tool(f)
+        manager.warn_on_duplicate_tools = False
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            manager.add_tool(f)
 
 
 class TestCallTools:

@@ -1,29 +1,73 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
 import base64
+import functools
 import json
 import logging
-from typing import Any, Callable, Dict, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Union, Literal
 
 from mcp.server import Server as MCPServer
 from mcp.server.stdio import stdio_server
 from mcp.types import Resource as MCPResource
 from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 
 from .exceptions import ResourceError
-from .resources import Resource, ResourceManager
+from .resources import Resource, FunctionResource, ResourceManager
 from .tools import ToolManager
 
-logger = logging.getLogger("mcp")
+
+logger = logging.getLogger("FlashMCP")
+
+
+class Settings(BaseSettings):
+    """FlashMCP server settings.
+
+    All settings can be configured via environment variables with the prefix FASTMCP_.
+    For example, FASTMCP_DEBUG=true will set debug=True.
+    """
+
+    model_config: dict = dict(env_prefix="FASTMCP_")
+
+    # Server settings
+    debug: bool = False
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    # HTTP settings
+    host: str = "0.0.0.0"
+    port: int = 8000
+
+    # resource settings
+    warn_on_duplicate_resources: bool = True
+
+    # tool settings
+    warn_on_duplicate_tools: bool = True
 
 
 class FlashMCPServer:
-    def __init__(self, name: str):
-        self._mcp_server = MCPServer(name)
-        self._tool_manager = ToolManager()
-        self._resource_manager = ResourceManager()
+    def __init__(self, name=None, **settings: Optional[Settings]):
+        self.settings = Settings(**settings)
+        self._mcp_server = MCPServer(name=name or "FlashMCPServer")
+        self._tool_manager = ToolManager(
+            warn_on_duplicate_tools=self.settings.warn_on_duplicate_tools
+        )
+        self._resource_manager = ResourceManager(
+            warn_on_duplicate_resources=self.settings.warn_on_duplicate_resources
+        )
+
+        # Configure logging
+        logging.basicConfig(
+            level=getattr(logging, self.settings.log_level.upper()),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+        logger.setLevel(getattr(logging, self.settings.log_level.upper()))
+
         self._setup_handlers()
+
+    @property
+    def name(self) -> str:
+        return self._mcp_server.name
 
     def _setup_handlers(self) -> None:
         """Set up core MCP protocol handlers."""
@@ -206,6 +250,48 @@ class FlashMCPServer:
         )
         self.add_resource(resource)
 
+    def resource(
+        self,
+        name: str,
+        *,
+        description: Optional[str] = None,
+        mime_type: Optional[str] = None,
+    ) -> Callable:
+        """Decorator to register a function as a dynamic resource.
+
+        The function will be called with kwargs parsed from the URI query string.
+        For example, a URI of "fn://my_func?x=1&y=2" will call the function with
+        kwargs {"x": "1", "y": "2"}.
+
+        Args:
+            name: Name for the resource (used in fn:// URI)
+            description: Optional description of the resource
+            mime_type: Optional MIME type for the resource
+
+        Example:
+            @server.resource("my_func")
+            def get_data(x: str, y: str) -> str:
+                # Called with fn://my_func?x=1&y=2
+                return f"x={x}, y={y}"
+        """
+
+        def decorator(func: Callable) -> Callable:
+            @functools.wraps(func)
+            def wrapper(**kwargs) -> Any:
+                return func(**kwargs)
+
+            resource = FunctionResource(
+                uri=f"fn://{name}",  # Base URI, params added when called
+                name=name,
+                description=description,
+                mime_type=mime_type or "text/plain",
+                func=wrapper,
+            )
+            self.add_resource(resource)
+            return wrapper
+
+        return decorator
+
     async def run(self, *args, **kwargs) -> None:
         """Run the FlashMCP server."""
         await self._mcp_server.run(*args, **kwargs)
@@ -222,7 +308,8 @@ class FlashMCPServer:
 
     @classmethod
     async def run_sse(
-        cls, app: "FlashMCPServer", host: str = "0.0.0.0", port: int = 8000
+        cls,
+        app: "FlashMCPServer",
     ) -> None:
         """Run the server using SSE transport."""
         from mcp.server.sse import SseServerTransport
@@ -246,11 +333,16 @@ class FlashMCPServer:
             await sse.handle_post_message(request.scope, request.receive, request._send)
 
         starlette_app = Starlette(
-            debug=True,
+            debug=app.settings.debug,
             routes=[
                 Route("/sse", endpoint=handle_sse),
                 Route("/messages", endpoint=handle_messages, methods=["POST"]),
             ],
         )
 
-        uvicorn.run(starlette_app, host=host, port=port)
+        uvicorn.run(
+            starlette_app,
+            host=app.settings.host,
+            port=app.settings.port,
+            log_level=app.settings.log_level,
+        )
