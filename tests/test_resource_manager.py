@@ -43,6 +43,36 @@ def temp_dir():
         yield Path(d).resolve()
 
 
+class TestResourceValidation:
+    def test_resource_uri_validation(self):
+        def dummy_func() -> str:
+            return "data"
+
+        # Valid URI
+        resource = FunctionResource(
+            uri="http://example.com/data",
+            name="test",
+            func=dummy_func,
+        )
+        assert resource.uri == "http://example.com/data"
+
+        # Missing protocol
+        with pytest.raises(ValueError, match="URI must have a protocol"):
+            FunctionResource(
+                uri="invalid",
+                name="test",
+                func=dummy_func,
+            )
+
+        # Missing host
+        with pytest.raises(ValueError, match="URI must have a host"):
+            FunctionResource(
+                uri="http://",
+                name="test",
+                func=dummy_func,
+            )
+
+
 class TestFileResource:
     """Test FileResource functionality."""
 
@@ -137,19 +167,6 @@ class TestFunctionResource:
         assert resource.description == "test function"
         assert resource.mime_type == "text/plain"
         assert resource.func == my_func
-
-    def test_function_resource_invalid_uri(self):
-        """Test FunctionResource rejects invalid URIs."""
-
-        def my_func() -> str:
-            return "test"
-
-        with pytest.raises(ValueError, match="URI must start with fn://"):
-            FunctionResource(
-                uri="invalid://test",
-                name="test",
-                func=my_func,
-            )
 
     async def test_function_resource_read_no_params(self):
         """Test reading a FunctionResource with no parameters."""

@@ -23,6 +23,22 @@ class Resource(BaseModel):
     description: Optional[str] = None
     mime_type: str = "text/plain"
 
+    @field_validator("uri")
+    @classmethod
+    def validate_uri_format(cls, uri: str) -> str:
+        """Validate URI follows [protocol]://[host]/[path] format."""
+        parsed = urlparse(uri)
+
+        # Check protocol exists and is not empty
+        if not parsed.scheme:
+            raise ValueError("URI must have a protocol (e.g., 'http://', 'file://')")
+
+        # Check host exists and is not empty
+        if not parsed.netloc and not parsed.path:
+            raise ValueError("URI must have a host or path")
+
+        return uri
+
     @abc.abstractmethod
     async def read(self) -> str:
         """Read the resource content."""
@@ -38,14 +54,6 @@ class FunctionResource(Resource):
     """
 
     func: Callable[..., Any]
-
-    @field_validator("uri")
-    @classmethod
-    def validate_uri(cls, uri: str) -> str:
-        """Ensure URI starts with fn://."""
-        if not uri.startswith("fn://"):
-            raise ValueError(f"URI must start with fn://: {uri}")
-        return uri
 
     def _parse_uri_params(self) -> Dict[str, str]:
         """Parse URI query string into kwargs."""

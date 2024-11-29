@@ -3,7 +3,7 @@
 import base64
 import functools
 import json
-from typing import Any, Callable, Dict, Optional, Sequence, Union, Literal
+from typing import Any, Callable, Optional, Sequence, Union, Literal
 
 from mcp.server import Server as MCPServer
 from mcp.server.stdio import stdio_server
@@ -147,7 +147,12 @@ class FlashMCP:
         self, name: Optional[str] = None, description: Optional[str] = None
     ) -> Callable:
         """Decorator to register a tool."""
-        breakpoint()
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @tool decorator was used incorrectly. "
+                "Did you forget to call it? Use @tool() instead of @tool"
+            )
 
         def decorator(func: Callable) -> Callable:
             self.add_tool(func, name=name, description=description)
@@ -162,94 +167,6 @@ class FlashMCP:
             resource: A Resource instance to add
         """
         self._resource_manager.add_resource(resource)
-
-    def add_file_resource(
-        self,
-        path: str,
-        *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        mime_type: Optional[str] = None,
-    ) -> None:
-        """Add a file as a resource.
-
-        This is a convenience method that constructs and adds a FileResource.
-        For more control, use add_resource() directly.
-        """
-        from pathlib import Path
-        from .resources import FileResource
-
-        file = Path(path)
-        if not file.is_absolute():
-            raise ValueError(f"Path must be absolute: {path}")
-        if not file.is_file():
-            raise FileNotFoundError(f"File does not exist: {path}")
-
-        resource = FileResource(
-            uri=f"file://{str(file)}",
-            name=name or file.name,
-            description=description,
-            mime_type=mime_type or "text/plain",
-            path=file,
-        )
-        self.add_resource(resource)
-
-    def add_http_resource(
-        self,
-        url: str,
-        *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        mime_type: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> None:
-        """Add an HTTP endpoint as a resource.
-
-        This is a convenience method that constructs and adds an HttpResource.
-        For more control, use add_resource() directly.
-        """
-        from .resources import HttpResource
-
-        resource = HttpResource(
-            uri=f"http://{url}",
-            name=name or url.split("/")[-1],
-            description=description,
-            mime_type=mime_type or "text/plain",
-            url=url,
-            headers=headers,
-        )
-        self.add_resource(resource)
-
-    def add_dir_resource(
-        self,
-        path: str,
-        *,
-        recursive: bool = False,
-        pattern: Optional[str] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ) -> None:
-        """Add a directory as a resource.
-
-        This is a convenience method that constructs and adds a DirectoryResource.
-        For more control, use add_resource() directly.
-        """
-        from pathlib import Path
-        from .resources import DirectoryResource
-
-        dir_path = Path(path).expanduser().resolve()
-        if not dir_path.is_dir():
-            raise ValueError(f"Directory does not exist: {path}")
-
-        resource = DirectoryResource(
-            uri=f"dir://{str(dir_path)}",
-            name=name or dir_path.name,
-            description=description,
-            path=dir_path,
-            recursive=recursive,
-            pattern=pattern,
-        )
-        self.add_resource(resource)
 
     def resource(
         self,
@@ -275,6 +192,12 @@ class FlashMCP:
                 # Called with fn://my_func?x=1&y=2
                 return f"x={x}, y={y}"
         """
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @resource decorator was used incorrectly. "
+                "Did you forget to call it? Use @resource('name') instead of @resource"
+            )
 
         def decorator(func: Callable) -> Callable:
             @functools.wraps(func)
