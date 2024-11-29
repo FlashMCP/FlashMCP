@@ -30,6 +30,10 @@ class Tool(BaseModel):
     ) -> "Tool":
         """Create a Tool from a function."""
         func_name = name or func.__name__
+
+        if func_name == "<lambda>":
+            raise ValueError("You must provide a name for lambda functions")
+
         func_doc = description or func.__doc__ or ""
         is_async = inspect.iscoroutinefunction(func)
 

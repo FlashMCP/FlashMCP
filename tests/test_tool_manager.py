@@ -73,8 +73,15 @@ class TestAddTools:
 
     def test_add_lambda(self):
         manager = ToolManager()
-        manager.add_tool(lambda x: x)
-        assert len(manager.list_tools()) == 1
+        tool = manager.add_tool(lambda x: x, name="my_tool")
+        assert tool.name == "my_tool"
+
+    def test_add_lambda_with_no_name(self):
+        manager = ToolManager()
+        with pytest.raises(
+            ValueError, match="You must provide a name for lambda functions"
+        ):
+            manager.add_tool(lambda x: x)
 
     def test_warn_on_duplicate_tools(self):
         """Test warning on duplicate tools."""

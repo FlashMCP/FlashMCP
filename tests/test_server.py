@@ -10,22 +10,27 @@ class TestServer:
         assert server.name == "FlashMCPServer"
 
 
+def tool_fn(x: int, y: int) -> int:
+    return x + y
+
+
 class TestServerTools:
     async def test_add_tool(self):
         server = FlashMCPServer()
-        server.add_tool(lambda x: x)
+        server.add_tool(tool_fn)
+        server.add_tool(tool_fn)
         assert len(server._tool_manager.list_tools()) == 1
 
     async def test_list_tools(self):
         server = FlashMCPServer()
-        server.add_tool(lambda x: x)
+        server.add_tool(tool_fn)
         async with client_session(server._mcp_server) as client:
             tools = await client.list_tools()
             assert len(tools.tools) == 1
 
     async def test_call_tool(self):
         server = FlashMCPServer()
-        server.add_tool(lambda x: x)
+        server.add_tool(tool_fn)
         async with client_session(server._mcp_server) as client:
             result = await client.call_tool("my_tool", {"arg1": "value"})
             assert "error" not in result
