@@ -12,7 +12,7 @@ from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 from pydantic import BaseModel
 
 from .exceptions import ResourceError
-from .resources import ResourceManager
+from .resources import Resource, ResourceManager
 from .tools import ToolManager
 
 logger = logging.getLogger("mcp")
@@ -110,6 +110,14 @@ class FlashMCPServer:
 
         return decorator
 
+    def add_resource(self, resource: Resource) -> None:
+        """Add a resource to the server.
+
+        Args:
+            resource: A Resource instance to add
+        """
+        self._resource_manager.add_resource(resource)
+
     def add_file_resource(
         self,
         path: str,
@@ -118,13 +126,28 @@ class FlashMCPServer:
         description: Optional[str] = None,
         mime_type: Optional[str] = None,
     ) -> None:
-        """Add a file as a resource."""
-        self._resource_manager.add_file_resource(
-            path,
-            name=name,
+        """Add a file as a resource.
+
+        This is a convenience method that constructs and adds a FileResource.
+        For more control, use add_resource() directly.
+        """
+        from pathlib import Path
+        from .resources import FileResource
+
+        file = Path(path)
+        if not file.is_absolute():
+            raise ValueError(f"Path must be absolute: {path}")
+        if not file.is_file():
+            raise FileNotFoundError(f"File does not exist: {path}")
+
+        resource = FileResource(
+            uri=f"file://{str(file)}",
+            name=name or file.name,
             description=description,
-            mime_type=mime_type,
+            mime_type=mime_type or "text/plain",
+            path=file,
         )
+        self.add_resource(resource)
 
     def add_http_resource(
         self,
@@ -135,14 +158,22 @@ class FlashMCPServer:
         mime_type: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> None:
-        """Add an HTTP endpoint as a resource."""
-        self._resource_manager.add_http_resource(
-            url,
-            name=name,
+        """Add an HTTP endpoint as a resource.
+
+        This is a convenience method that constructs and adds an HttpResource.
+        For more control, use add_resource() directly.
+        """
+        from .resources import HttpResource
+
+        resource = HttpResource(
+            uri=f"http://{url}",
+            name=name or url.split("/")[-1],
             description=description,
-            mime_type=mime_type,
+            mime_type=mime_type or "text/plain",
+            url=url,
             headers=headers,
         )
+        self.add_resource(resource)
 
     def add_dir_resource(
         self,
@@ -153,14 +184,27 @@ class FlashMCPServer:
         name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> None:
-        """Add a directory as a resource."""
-        self._resource_manager.add_dir_resource(
-            path,
+        """Add a directory as a resource.
+
+        This is a convenience method that constructs and adds a DirectoryResource.
+        For more control, use add_resource() directly.
+        """
+        from pathlib import Path
+        from .resources import DirectoryResource
+
+        dir_path = Path(path).expanduser().resolve()
+        if not dir_path.is_dir():
+            raise ValueError(f"Directory does not exist: {path}")
+
+        resource = DirectoryResource(
+            uri=f"dir://{str(dir_path)}",
+            name=name or dir_path.name,
+            description=description,
+            path=dir_path,
             recursive=recursive,
             pattern=pattern,
-            name=name,
-            description=description,
         )
+        self.add_resource(resource)
 
     async def run(self, *args, **kwargs) -> None:
         """Run the FlashMCP server."""

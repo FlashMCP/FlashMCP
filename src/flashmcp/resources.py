@@ -25,7 +25,7 @@ class Resource(BaseModel):
     @abc.abstractmethod
     async def read(self) -> str:
         """Read the resource content."""
-        ...
+        return ""
 
 
 class FileResource(Resource):
@@ -139,111 +139,26 @@ class ResourceManager:
         logger.debug("Listing resources", extra={"count": len(self._resources)})
         return list(self._resources.values())
 
-    def add_file_resource(
-        self,
-        path: str,
-        *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        mime_type: Optional[str] = None,
-    ) -> FileResource:
-        """Add a file as a resource.
+    def add_resource(self, resource: Resource) -> Resource:
+        """Add a resource to the manager.
 
         Args:
-            path: Absolute path to the file
-            name: Optional name for the resource
-            description: Optional description of the resource
-            mime_type: Optional MIME type for the resource
+            resource: A Resource instance to add
 
         Returns:
-            The created resource
-
-        Raises:
-            ValueError: If the path is not absolute or the file does not exist
+            The added resource. If a resource with the same URI already exists,
+            returns the existing resource.
         """
         logger.debug(
-            "Adding file resource",
+            "Adding resource",
             extra={
-                "path": path,
-                "name": name,
-                "mime_type": mime_type,
+                "uri": resource.uri,
+                "type": type(resource).__name__,
+                "name": resource.name,
             },
         )
-        file = Path(path)
-        if not file.is_absolute():
-            raise ValueError(f"Path must be absolute: {path}")
-        if not file.is_file():
-            raise FileNotFoundError(f"File does not exist: {path}")
-
-        resource = FileResource(
-            uri=f"file://{str(file)}",
-            name=name or file.name,
-            description=description,
-            mime_type=mime_type or "text/plain",
-            path=file,
-        )
-        self._resources[resource.uri] = resource
-        return resource
-
-    def add_http_resource(
-        self,
-        url: str,
-        *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        mime_type: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> HttpResource:
-        """Add an HTTP endpoint as a resource."""
-        logger.debug(
-            "Adding HTTP resource",
-            extra={
-                "url": url,
-                "name": name,
-                "mime_type": mime_type,
-            },
-        )
-        resource = HttpResource(
-            uri=f"http://{url}",
-            name=name or url.split("/")[-1],
-            description=description,
-            mime_type=mime_type or "text/plain",
-            url=url,
-            headers=headers,
-        )
-        self._resources[resource.uri] = resource
-        return resource
-
-    def add_dir_resource(
-        self,
-        path: str,
-        *,
-        recursive: bool = False,
-        pattern: Optional[str] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ) -> DirectoryResource:
-        """Add a directory as a resource."""
-        logger.debug(
-            "Adding directory resource",
-            extra={
-                "path": path,
-                "recursive": recursive,
-                "pattern": pattern,
-                "name": name,
-            },
-        )
-        dir_path = Path(path).expanduser().resolve()
-        if not dir_path.is_dir():
-            raise ValueError(f"Directory does not exist: {path}")
-
-        resource = DirectoryResource(
-            uri=f"dir://{str(dir_path)}",
-            name=name or dir_path.name,
-            description=description,
-            path=dir_path,
-            recursive=recursive,
-            pattern=pattern,
-        )
+        existing = self._resources.get(resource.uri)
+        if existing:
+            return existing
         self._resources[resource.uri] = resource
         return resource

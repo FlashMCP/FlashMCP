@@ -123,40 +123,43 @@ class TestFileResource:
             temp_file.chmod(0o644)  # Restore permissions
 
 
-class TestResourceManager:
-    """Test ResourceManager functionality."""
+class TestResourceManagerAdd:
+    """Test ResourceManager add functionality."""
 
     def test_add_file_resource(
         self, resource_manager: ResourceManager, temp_file: Path
     ):
         """Test adding a file resource."""
-        resource = resource_manager.add_file_resource(
-            str(temp_file),
+        resource = FileResource(
+            uri=f"file://{temp_file}",
             name="test",
             description="test file",
             mime_type="text/plain",
+            path=temp_file,
         )
-        assert isinstance(resource, FileResource)
-        assert resource.uri == f"file://{temp_file}"
-        assert resource.name == "test"
-        assert resource.description == "test file"
-        assert resource.mime_type == "text/plain"
-        assert resource.path == temp_file
+        added = resource_manager.add_resource(resource)
+        assert isinstance(added, FileResource)
+        assert added.uri == f"file://{temp_file}"
+        assert added.name == "test"
+        assert added.description == "test file"
+        assert added.mime_type == "text/plain"
+        assert added.path == temp_file
 
     def test_add_file_resource_relative_path_error(
         self, resource_manager: ResourceManager
     ):
         """Test ResourceManager rejects relative paths."""
         with pytest.raises(ValueError, match="Path must be absolute"):
-            resource_manager.add_file_resource("test.txt")
+            resource = FileResource(
+                uri="file://test.txt",
+                name="test",
+                path=Path("test.txt"),
+            )
+            resource_manager.add_resource(resource)
 
-    def test_add_file_resource_missing_file_error(
-        self, resource_manager: ResourceManager, temp_dir: Path
-    ):
-        """Test ResourceManager rejects non-existent files."""
-        missing_file = temp_dir / "missing.txt"
-        with pytest.raises(FileNotFoundError):
-            resource_manager.add_file_resource(str(missing_file))
+
+class TestResourceManagerRead:
+    """Test ResourceManager read functionality."""
 
     def test_get_resource_unknown_uri(self, resource_manager: ResourceManager):
         """Test getting a non-existent resource."""
@@ -165,23 +168,26 @@ class TestResourceManager:
 
     def test_get_resource(self, resource_manager: ResourceManager, temp_file: Path):
         """Test getting a resource by URI."""
-        added = resource_manager.add_file_resource(str(temp_file))
+        resource = FileResource(
+            uri=f"file://{temp_file}",
+            name="test",
+            path=temp_file,
+        )
+        added = resource_manager.add_resource(resource)
         retrieved = resource_manager.get_resource(added.uri)
         assert retrieved == added
-
-    def test_list_resources(self, resource_manager: ResourceManager, temp_file: Path):
-        """Test listing all resources."""
-        resource = resource_manager.add_file_resource(str(temp_file))
-        resources = resource_manager.list_resources()
-        assert len(resources) == 1
-        assert resources[0] == resource
 
     async def test_resource_read_through_manager(
         self, resource_manager: ResourceManager, temp_file: Path
     ):
         """Test reading a resource through the manager."""
-        resource = resource_manager.add_file_resource(str(temp_file))
-        retrieved = resource_manager.get_resource(resource.uri)
+        resource = FileResource(
+            uri=f"file://{temp_file}",
+            name="test",
+            path=temp_file,
+        )
+        added = resource_manager.add_resource(resource)
+        retrieved = resource_manager.get_resource(added.uri)
         assert retrieved is not None
         content = await retrieved.read()
         assert content == "test content"
@@ -191,11 +197,75 @@ class TestResourceManager:
     ):
         """Test error handling when reading through manager."""
         # Create resource while file exists
-        resource = resource_manager.add_file_resource(str(temp_file_no_cleanup))
-        retrieved = resource_manager.get_resource(resource.uri)
+        resource = FileResource(
+            uri=f"file://{temp_file_no_cleanup}",
+            name="test",
+            path=temp_file_no_cleanup,
+        )
+        added = resource_manager.add_resource(resource)
+        retrieved = resource_manager.get_resource(added.uri)
         assert retrieved is not None
 
         # Delete file and verify read fails
         temp_file_no_cleanup.unlink()
         with pytest.raises(FileNotFoundError):
             await retrieved.read()
+
+
+class TestResourceManagerList:
+    """Test ResourceManager list functionality."""
+
+    def test_list_resources(self, resource_manager: ResourceManager, temp_file: Path):
+        """Test listing all resources."""
+        resource = FileResource(
+            uri=f"file://{temp_file}",
+            name="test",
+            path=temp_file,
+        )
+        added = resource_manager.add_resource(resource)
+        resources = resource_manager.list_resources()
+        assert len(resources) == 1
+        assert resources[0] == added
+
+    def test_list_resources_duplicate(
+        self, resource_manager: ResourceManager, temp_file: Path
+    ):
+        """Test that adding the same resource twice only stores it once."""
+        resource = FileResource(
+            uri=f"file://{temp_file}",
+            name="test",
+            path=temp_file,
+        )
+        resource1 = resource_manager.add_resource(resource)
+        resource2 = resource_manager.add_resource(resource)
+
+        resources = resource_manager.list_resources()
+        assert len(resources) == 1
+        assert resources[0] == resource1
+        assert resource1 == resource2
+
+    def test_list_multiple_resources(
+        self,
+        resource_manager: ResourceManager,
+        temp_file: Path,
+        temp_file_no_cleanup: Path,
+    ):
+        """Test listing multiple different resources."""
+        resource1 = FileResource(
+            uri=f"file://{temp_file}",
+            name="test1",
+            path=temp_file,
+        )
+        resource2 = FileResource(
+            uri=f"file://{temp_file_no_cleanup}",
+            name="test2",
+            path=temp_file_no_cleanup,
+        )
+        added1 = resource_manager.add_resource(resource1)
+        added2 = resource_manager.add_resource(resource2)
+
+        resources = resource_manager.list_resources()
+        assert len(resources) == 2
+        assert resources[0] == added1
+        assert resources[1] == added2
+        assert added1 != added2
