@@ -1,0 +1,306 @@
+"""FlashMCP CLI tools."""
+
+import importlib.metadata
+import importlib.util
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional, Tuple
+
+import typer
+from typing_extensions import Annotated
+
+from ..utilities.logging import get_logger
+from . import claude
+
+logger = get_logger(__name__)
+
+app = typer.Typer(
+    name="FlashMCP",
+    help="FlashMCP development tools",
+    add_completion=False,
+    no_args_is_help=True,  # Show help if no args provided
+)
+
+
+def _build_uv_command(
+    file: Path,
+    uv_directory: Optional[Path] = None,
+) -> list[str]:
+    """Build the uv run command."""
+    cmd = ["uv"]
+
+    if uv_directory:
+        cmd.extend(["--directory", str(uv_directory)])
+
+    cmd.extend(["run", str(file)])
+    return cmd
+
+
+def _parse_file_path(file_spec: str) -> Tuple[Path, Optional[str]]:
+    """Parse a file path that may include a server object specification.
+
+    Args:
+        file_spec: Path to file, optionally with :object suffix
+
+    Returns:
+        Tuple of (file_path, server_object)
+    """
+    if ":" in file_spec:
+        file_str, server_object = file_spec.rsplit(":", 1)
+    else:
+        file_str, server_object = file_spec, None
+
+    file_path = Path(file_str).expanduser().resolve()
+    if not file_path.exists():
+        logger.error(f"File not found: {file_path}")
+        sys.exit(1)
+    if not file_path.is_file():
+        logger.error(f"Not a file: {file_path}")
+        sys.exit(1)
+
+    return file_path, server_object
+
+
+def _import_server(file: Path, server_object: Optional[str] = None):
+    """Import a FlashMCP server from a file.
+
+    Args:
+        file: Path to the file
+        server_object: Optional object name in format "module:object" or just "object"
+
+    Returns:
+        The server object
+    """
+    # Import the module
+    spec = importlib.util.spec_from_file_location("server_module", file)
+    if not spec or not spec.loader:
+        logger.error("Could not load module", extra={"file": str(file)})
+        sys.exit(1)
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # If no object specified, try __main__ block
+    if not server_object:
+        # Look for the most common server object names
+        for name in ["mcp", "server", "app"]:
+            if hasattr(module, name):
+                return getattr(module, name)
+
+        logger.error(
+            f"No server object found in {file}. Please specify the object name with file:object syntax.",
+            extra={"file": str(file)},
+        )
+        sys.exit(1)
+
+    # Handle module:object syntax
+    if ":" in server_object:
+        module_name, object_name = server_object.split(":", 1)
+        try:
+            server_module = importlib.import_module(module_name)
+            server = getattr(server_module, object_name, None)
+        except ImportError:
+            logger.error(
+                f"Could not import module '{module_name}'",
+                extra={"file": str(file)},
+            )
+            sys.exit(1)
+    else:
+        # Just object name
+        server = getattr(module, server_object, None)
+
+    if server is None:
+        logger.error(
+            f"Server object '{server_object}' not found",
+            extra={"file": str(file)},
+        )
+        sys.exit(1)
+
+    return server
+
+
+@app.command()
+def version() -> None:
+    """Show the FlashMCP version."""
+    try:
+        version = importlib.metadata.version("FlashMCP")
+        print(f"FlashMCP version {version}")
+    except importlib.metadata.PackageNotFoundError:
+        print("FlashMCP version unknown (package not installed)")
+        sys.exit(1)
+
+
+@app.command()
+def dev(
+    file_spec: str = typer.Argument(
+        ...,
+        help="Python file to run, optionally with :object suffix",
+    ),
+    uv_directory: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--uv-directory",
+            "-d",
+            help="Directory containing pyproject.toml (defaults to current directory)",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+) -> None:
+    """Run a FlashMCP server with the MCP Inspector."""
+    file, server_object = _parse_file_path(file_spec)
+
+    logger.debug(
+        "Starting dev server",
+        extra={
+            "file": str(file),
+            "server_object": server_object,
+            "uv_directory": str(uv_directory) if uv_directory else None,
+        },
+    )
+
+    try:
+        uv_cmd = _build_uv_command(file, uv_directory)
+        # Run the MCP Inspector command
+        process = subprocess.run(
+            ["npx", "@modelcontextprotocol/inspector"] + uv_cmd,
+            check=True,
+        )
+        sys.exit(process.returncode)
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            "Dev server failed",
+            extra={
+                "file": str(file),
+                "error": str(e),
+                "returncode": e.returncode,
+            },
+        )
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        logger.error(
+            "npx not found. Please install Node.js and npm.",
+            extra={"file": str(file)},
+        )
+        sys.exit(1)
+
+
+@app.command()
+def run(
+    file_spec: str = typer.Argument(
+        ...,
+        help="Python file to run, optionally with :object suffix",
+    ),
+    transport: Annotated[
+        Optional[str],
+        typer.Option(
+            "--transport",
+            "-t",
+            help="Transport protocol to use (stdio or sse)",
+        ),
+    ] = None,
+    uv_directory: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--uv-directory",
+            "-d",
+            help="Directory containing pyproject.toml (defaults to current directory)",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+) -> None:
+    """Run a FlashMCP server."""
+    file, server_object = _parse_file_path(file_spec)
+
+    logger.debug(
+        "Running server",
+        extra={
+            "file": str(file),
+            "server_object": server_object,
+            "transport": transport,
+            "uv_directory": str(uv_directory) if uv_directory else None,
+        },
+    )
+
+    try:
+        uv_cmd = _build_uv_command(file, uv_directory)
+
+        # Import and get server object
+        server = _import_server(file, server_object)
+
+        # Run the server
+        kwargs = {}
+        if transport:
+            kwargs["transport"] = transport
+
+        server.run(**kwargs)
+
+    except Exception as e:
+        logger.error(
+            "Failed to run server",
+            extra={
+                "file": str(file),
+                "error": str(e),
+            },
+        )
+        sys.exit(1)
+
+
+@app.command()
+def install(
+    file_spec: str = typer.Argument(
+        ...,
+        help="Python file to run, optionally with :object suffix",
+    ),
+    server_name: Annotated[
+        Optional[str],
+        typer.Option(
+            "--name",
+            "-n",
+            help="Custom name for the server (defaults to file name)",
+        ),
+    ] = None,
+    uv_directory: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--uv-directory",
+            "-d",
+            help="Directory containing pyproject.toml (defaults to current directory)",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+) -> None:
+    """Install a FlashMCP server in the Claude desktop app."""
+    file, server_object = _parse_file_path(file_spec)
+
+    logger.debug(
+        "Installing server",
+        extra={
+            "file": str(file),
+            "server_name": server_name,
+            "server_object": server_object,
+            "uv_directory": str(uv_directory) if uv_directory else None,
+        },
+    )
+
+    if not claude.get_claude_config_path():
+        logger.error("Claude app not found")
+        sys.exit(1)
+
+    if claude.update_claude_config(file, server_name, uv_directory=uv_directory):
+        name = server_name or file.stem
+        print(f"Successfully installed {name} in Claude app")
+    else:
+        name = server_name or file.stem
+        print(f"Failed to install {name} in Claude app")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    app()
