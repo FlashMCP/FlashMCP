@@ -38,11 +38,11 @@ class TestServer:
     async def test_add_resource_decorator(self):
         mcp = FlashMCP()
 
-        @mcp.resource("r://data")
+        @mcp.resource("r://{x}")
         def get_data(x: str) -> str:
             return f"Data: {x}"
 
-        assert len(mcp._resource_manager.list_resources()) == 1
+        assert len(mcp._resource_manager._templates) == 1
 
     async def test_add_resource_decorator_incorrect_usage(self):
         mcp = FlashMCP()
@@ -264,3 +264,87 @@ class TestServerResources:
                 result.contents[0].blob
                 == base64.b64encode(b"Binary file data").decode()
             )
+
+    async def test_resource_with_params(self):
+        """Test that a resource with function parameters is automatically a template"""
+        mcp = FlashMCP()
+
+        with pytest.raises(ValueError, match="Mismatch between URI parameters"):
+
+            @mcp.resource("resource://data")
+            def get_data(param: str) -> str:
+                return f"Data: {param}"
+
+    async def test_resource_with_uri_params(self):
+        """Test that a resource with URI parameters is automatically a template"""
+        mcp = FlashMCP()
+
+        with pytest.raises(ValueError, match="Mismatch between URI parameters"):
+
+            @mcp.resource("resource://{param}")
+            def get_data() -> str:
+                return "Data"
+
+    async def test_resource_matching_params(self):
+        """Test that a resource with matching URI and function parameters works"""
+        mcp = FlashMCP()
+
+        @mcp.resource("resource://{name}/data")
+        def get_data(name: str) -> str:
+            return f"Data for {name}"
+
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.read_resource("resource://test/data")
+            assert result.contents[0].text == "Data for test"
+
+    async def test_resource_mismatched_params(self):
+        """Test that mismatched parameters raise an error"""
+        mcp = FlashMCP()
+
+        with pytest.raises(ValueError, match="Mismatch between URI parameters"):
+
+            @mcp.resource("resource://{name}/data")
+            def get_data(user: str) -> str:
+                return f"Data for {user}"
+
+    async def test_resource_multiple_params(self):
+        """Test that multiple parameters work correctly"""
+        mcp = FlashMCP()
+
+        @mcp.resource("resource://{org}/{repo}/data")
+        def get_data(org: str, repo: str) -> str:
+            return f"Data for {org}/{repo}"
+
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.read_resource("resource://cursor/FlashMCP/data")
+            assert result.contents[0].text == "Data for cursor/FlashMCP"
+
+    async def test_resource_no_params(self):
+        """Test that a resource with no parameters works as a regular resource"""
+        mcp = FlashMCP()
+
+        @mcp.resource("resource://static")
+        def get_data() -> str:
+            return "Static data"
+
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.read_resource("resource://static")
+            assert result.contents[0].text == "Static data"
+
+    async def test_template_to_resource_conversion(self):
+        """Test that templates are properly converted to resources when accessed"""
+        mcp = FlashMCP()
+
+        @mcp.resource("resource://{name}/data")
+        def get_data(name: str) -> str:
+            return f"Data for {name}"
+
+        # Should be registered as a template
+        assert len(mcp._resource_manager._templates) == 1
+        assert len(mcp._resource_manager.list_resources()) == 0
+
+        # When accessed, should create a concrete resource
+        resource = await mcp._resource_manager.get_resource("resource://test/data")
+        assert isinstance(resource, FunctionResource)
+        result = await resource.read()
+        assert result == "Data for test"
