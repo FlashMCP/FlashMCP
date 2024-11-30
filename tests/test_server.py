@@ -1,7 +1,7 @@
 from mcp.shared.memory import (
     create_connected_server_and_client_session as client_session,
 )
-from FlashMCP import FlashMCP
+from FlashMCP import FlashMCP, Context
 from FlashMCP.resources import FileResource, FunctionResource
 from FlashMCP.utilities.types import Image
 from mcp.types import TextContent, ImageContent
@@ -9,7 +9,10 @@ import pytest
 from pydantic import BaseModel
 from pathlib import Path
 import base64
-from typing import Union
+from typing import Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from FlashMCP import Context
 
 
 class TestServer:
@@ -368,3 +371,95 @@ class TestServerResourceTemplates:
         assert isinstance(resource, FunctionResource)
         result = await resource.read()
         assert result == "Data for test"
+
+
+class TestContextInjection:
+    """Test context injection in tools."""
+
+    async def test_context_detection(self):
+        """Test that context parameters are properly detected."""
+        mcp = FlashMCP()
+
+        def tool_with_context(x: int, ctx: Context) -> str:
+            return f"Request {ctx.request_id}: {x}"
+
+        tool = mcp._tool_manager.add_tool(tool_with_context)
+        assert tool.context_kwarg == "ctx"
+
+    async def test_context_injection(self):
+        """Test that context is properly injected into tool calls."""
+        mcp = FlashMCP()
+
+        def tool_with_context(x: int, ctx: Context) -> str:
+            assert ctx.request_id is not None
+            return f"Request {ctx.request_id}: {x}"
+
+        mcp.add_tool(tool_with_context)
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.call_tool("tool_with_context", {"x": 42})
+            assert len(result.content) == 1
+            assert "Request" in result.content[0].text
+            assert "42" in result.content[0].text
+
+    async def test_async_context(self):
+        """Test that context works in async functions."""
+        mcp = FlashMCP()
+
+        async def async_tool(x: int, ctx: Context) -> str:
+            assert ctx.request_id is not None
+            return f"Async request {ctx.request_id}: {x}"
+
+        mcp.add_tool(async_tool)
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.call_tool("async_tool", {"x": 42})
+            assert len(result.content) == 1
+            assert "Async request" in result.content[0].text
+            assert "42" in result.content[0].text
+
+    async def test_context_logging(self):
+        """Test that context logging methods work."""
+        mcp = FlashMCP()
+
+        def logging_tool(msg: str, ctx: Context) -> str:
+            ctx.debug("Debug message")
+            ctx.info("Info message")
+            ctx.warning("Warning message")
+            ctx.error("Error message")
+            return f"Logged messages for {msg}"
+
+        mcp.add_tool(logging_tool)
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.call_tool("logging_tool", {"msg": "test"})
+            assert len(result.content) == 1
+            assert "Logged messages for test" in result.content[0].text
+
+    async def test_optional_context(self):
+        """Test that context is optional."""
+        mcp = FlashMCP()
+
+        def no_context(x: int) -> int:
+            return x * 2
+
+        mcp.add_tool(no_context)
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.call_tool("no_context", {"x": 21})
+            assert len(result.content) == 1
+            assert result.content[0].text == "42"
+
+    async def test_context_resource_access(self):
+        """Test that context can access resources."""
+        mcp = FlashMCP()
+
+        @mcp.resource("test://data")
+        def test_resource() -> str:
+            return "resource data"
+
+        @mcp.tool()
+        async def tool_with_resource(ctx: Context) -> str:
+            data = await ctx.read_resource("test://data")
+            return f"Read resource: {data}"
+
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.call_tool("tool_with_resource", {})
+            assert len(result.content) == 1
+            assert "Read resource: resource data" in result.content[0].text

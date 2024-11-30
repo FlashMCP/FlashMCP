@@ -119,12 +119,22 @@ class FlashMCP:
             for info in tools
         ]
 
+    def get_context(self) -> Optional["Context"]:
+        try:
+            request_context = self._mcp_server.request_context
+            return Context(request_context=request_context, FlashMCP=self)
+        except LookupError:
+            return None
+
     async def call_tool(
         self, name: str, arguments: dict
     ) -> Sequence[Union[TextContent, ImageContent]]:
         """Call a tool by name with arguments."""
         try:
-            result = await self._tool_manager.call_tool(name, arguments)
+            context = self.get_context()
+            result = await self._tool_manager.call_tool(
+                name, arguments, context=context
+            )
             return _convert_to_content(result)
         except Exception as e:
             logger.error(f"Error calling tool {name}: {e}")
@@ -385,9 +395,24 @@ class Context(BaseModel):
     """
 
     _request_context: RequestContext
-    FlashMCP: FlashMCP
+    _FlashMCP: FlashMCP
 
-    model_config: dict = dict(arbitrary_types_allowed=True)
+    def __init__(
+        self, *, request_context: RequestContext, FlashMCP: FlashMCP, **kwargs: Any
+    ):
+        super().__init__(**kwargs)
+        self._request_context = request_context
+        self._FlashMCP = FlashMCP
+
+    @property
+    def FlashMCP(self) -> FlashMCP:
+        """Access to the FlashMCP server."""
+        return self._FlashMCP
+
+    @property
+    def request_context(self) -> RequestContext:
+        """Access to the underlying request context."""
+        return self._request_context
 
     async def report_progress(
         self, progress: float, total: Optional[float] = None
@@ -400,15 +425,15 @@ class Context(BaseModel):
         """
 
         progress_token = (
-            self._request_context.meta.progressToken
-            if self._request_context.meta
+            self.request_context.meta.progressToken
+            if self.request_context.meta
             else None
         )
 
         if not progress_token:
             return
 
-        await self._request_context.session.send_progress_notification(
+        await self.request_context.session.send_progress_notification(
             progress_token=progress_token, progress=progress, total=total
         )
 
@@ -421,7 +446,7 @@ class Context(BaseModel):
         Returns:
             The resource content as either text or bytes
         """
-        return await self.FlashMCP.read_resource(uri)
+        return await self._FlashMCP.read_resource(uri)
 
     def log(
         self,
@@ -429,7 +454,6 @@ class Context(BaseModel):
         message: str,
         *,
         logger_name: Optional[str] = None,
-        **extra: Any,
     ) -> None:
         """Send a log message to the client.
 
@@ -439,26 +463,24 @@ class Context(BaseModel):
             logger_name: Optional logger name
             **extra: Additional structured data to include
         """
-        self._request_context.session.send_log_message(
-            level=level, data=message, logger=logger_name, extra=extra
+        self.request_context.session.send_log_message(
+            level=level, data=message, logger=logger_name
         )
 
     @property
     def client_id(self) -> Optional[str]:
         """Get the client ID if available."""
-        return (
-            self._request_context.meta.clientId if self._request_context.meta else None
-        )
+        return self.request_context.meta.clientId if self.request_context.meta else None
 
     @property
     def request_id(self) -> str:
         """Get the unique ID for this request."""
-        return self._request_context.request_id
+        return self.request_context.request_id
 
     @property
     def session(self):
         """Access to the underlying session for advanced usage."""
-        return self._request_context.session
+        return self.request_context.session
 
     # Convenience methods for common log levels
     def debug(self, message: str, **extra: Any) -> None:
