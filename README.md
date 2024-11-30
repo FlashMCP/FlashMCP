@@ -4,7 +4,7 @@
 
 A fast, pythonic way to build Model Context Protocol (MCP) servers.
 
-The Model Context Protocol is an extremely powerful way to give LLMs access to tools and resources. However, building MCP servers can be difficult and cumbersome. FlashMCP provides a simple, intuitive interface for creating MCP servers in Python.
+Anthropic's new [Model Context Protocol](https://modelcontextprotocol.io) is powerful way to give broadcast new functionality and context to LLMs. However, developing MCP servers can be cumbersome. FlashMCP provides a simple, intuitive interface for creating MCP servers in Python.
 
 ## Installation
 
@@ -115,15 +115,3 @@ FlashMCP install your_server.py --with-editable . --with pandas --with numpy
 ```
 
 
-## Configuration
-
-FlashMCP can be configured via environment variables with the prefix `FASTMCP_`:
-
-- `FASTMCP_DEBUG`: Enable debug mode
-- `FASTMCP_LOG_LEVEL`: Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-- `FASTMCP_HOST`: HTTP server host (default: 0.0.0.0)
-- `FASTMCP_PORT`: HTTP server port (default: 8000)
-
-## License
-
-Apache 2.0
