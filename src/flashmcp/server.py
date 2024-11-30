@@ -1,5 +1,6 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
+import pydantic_core
 from typing import Any, Literal, Optional, Union
 
 from mcp.server import RequestContext
@@ -14,7 +15,6 @@ from typing import Callable, Sequence
 import inspect
 import re
 
-import pydantic.json
 from mcp.server import Server as MCPServer
 from mcp.server.stdio import stdio_server
 from mcp.server.sse import SseServerTransport
@@ -397,7 +397,7 @@ def _convert_to_content(value: Any) -> Sequence[Union[TextContent, ImageContent]
                 result.append(
                     TextContent(
                         type="text",
-                        text=json.dumps(item, default=pydantic.json.pydantic_encoder),
+                        text=json.dumps(pydantic_core.to_jsonable_python(item)),
                     )
                 )
         return result
@@ -414,7 +414,7 @@ def _convert_to_content(value: Any) -> Sequence[Union[TextContent, ImageContent]
     return [
         TextContent(
             type="text",
-            text=json.dumps(value, indent=2, default=pydantic.json.pydantic_encoder),
+            text=json.dumps(pydantic_core.to_jsonable_python(value)),
         )
     ]
 

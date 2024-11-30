@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 import pytest
 from FlashMCP.resources import FunctionResource
 
@@ -79,6 +80,20 @@ class TestFunctionResource:
         )
         with pytest.raises(ValueError, match="Error reading resource function://test"):
             await resource.read()
+
+    async def test_basemodel_conversion(self):
+        """Test handling of BaseModel types."""
+
+        class MyModel(BaseModel):
+            name: str
+
+        resource = FunctionResource(
+            uri="function://test",
+            name="test",
+            func=lambda: MyModel(name="test"),
+        )
+        content = await resource.read()
+        assert content == '{"name": "test"}'
 
     async def test_custom_type_conversion(self):
         """Test handling of custom types."""
