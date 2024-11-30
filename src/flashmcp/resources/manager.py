@@ -62,6 +62,11 @@ class ResourceManager:
         logger.debug("Listing resources", extra={"count": len(self._resources)})
         return list(self._resources.values())
 
+    def list_templates(self) -> list[ResourceTemplate]:
+        """List all registered templates."""
+        logger.debug("Listing templates", extra={"count": len(self._templates)})
+        return list(self._templates.values())
+
     def add_resource(self, resource: Resource) -> Resource:
         """Add a resource to the manager.
 

@@ -265,8 +265,11 @@ class TestServerResources:
                 == base64.b64encode(b"Binary file data").decode()
             )
 
+
+class TestServerResourceTemplates:
     async def test_resource_with_params(self):
-        """Test that a resource with function parameters is automatically a template"""
+        """Test that a resource with function parameters raises an error if the URI
+        parameters don't match"""
         mcp = FlashMCP()
 
         with pytest.raises(ValueError, match="Mismatch between URI parameters"):
@@ -284,6 +287,14 @@ class TestServerResources:
             @mcp.resource("resource://{param}")
             def get_data() -> str:
                 return "Data"
+
+    async def test_resource_with_untyped_params(self):
+        """Test that a resource with untyped parameters raises an error"""
+        mcp = FlashMCP()
+
+        @mcp.resource("resource://{param}")
+        def get_data(param) -> str:
+            return "Data"
 
     async def test_resource_matching_params(self):
         """Test that a resource with matching URI and function parameters works"""
@@ -319,7 +330,16 @@ class TestServerResources:
             result = await client.read_resource("resource://cursor/FlashMCP/data")
             assert result.contents[0].text == "Data for cursor/FlashMCP"
 
-    async def test_resource_no_params(self):
+    async def test_resource_multiple_mismatched_params(self):
+        """Test that mismatched parameters raise an error"""
+        mcp = FlashMCP()
+
+        with pytest.raises(ValueError, match="Mismatch between URI parameters"):
+
+            @mcp.resource("resource://{org}/{repo}/data")
+            def get_data(org: str, repo_2: str) -> str:
+                return f"Data for {org}"
+
         """Test that a resource with no parameters works as a regular resource"""
         mcp = FlashMCP()
 
@@ -341,7 +361,7 @@ class TestServerResources:
 
         # Should be registered as a template
         assert len(mcp._resource_manager._templates) == 1
-        assert len(mcp._resource_manager.list_resources()) == 0
+        assert len(await mcp.list_resources()) == 0
 
         # When accessed, should create a concrete resource
         resource = await mcp._resource_manager.get_resource("resource://test/data")
