@@ -189,13 +189,45 @@ class FlashMCP:
         name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> None:
-        """Add a tool to the server."""
+        """Add a tool to the server.
+
+        The tool function can optionally request a Context object by adding a parameter
+        with the Context type annotation. See the @tool decorator for examples.
+
+        Args:
+            func: The function to register as a tool
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+        """
         self._tool_manager.add_tool(func, name=name, description=description)
 
     def tool(
         self, name: Optional[str] = None, description: Optional[str] = None
     ) -> Callable:
-        """Decorator to register a tool."""
+        """Decorator to register a tool.
+
+        Tools can optionally request a Context object by adding a parameter with the Context type annotation.
+        The context provides access to MCP capabilities like logging, progress reporting, and resource access.
+
+        Args:
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+
+        Example:
+            @server.tool()
+            def my_tool(x: int) -> str:
+                return str(x)
+
+            @server.tool()
+            def tool_with_context(x: int, ctx: Context) -> str:
+                ctx.info(f"Processing {x}")
+                return str(x)
+
+            @server.tool()
+            async def async_tool(x: int, context: Context) -> str:
+                await context.report_progress(50, 100)
+                return str(x)
+        """
         # Check if user passed function directly instead of calling decorator
         if callable(name):
             raise TypeError(
@@ -392,6 +424,33 @@ class Context(BaseModel):
 
     This provides a cleaner interface to MCP's RequestContext functionality.
     It gets injected into tool and resource functions that request it via type hints.
+
+    To use context in a tool function, add a parameter with the Context type annotation:
+
+    ```python
+    @server.tool()
+    def my_tool(x: int, ctx: Context) -> str:
+        # Log messages to the client
+        ctx.info(f"Processing {x}")
+        ctx.debug("Debug info")
+        ctx.warning("Warning message")
+        ctx.error("Error message")
+
+        # Report progress
+        ctx.report_progress(50, 100)
+
+        # Access resources
+        data = ctx.read_resource("resource://data")
+
+        # Get request info
+        request_id = ctx.request_id
+        client_id = ctx.client_id
+
+        return str(x)
+    ```
+
+    The context parameter name can be anything as long as it's annotated with Context.
+    The context is optional - tools that don't need it can omit the parameter.
     """
 
     _request_context: RequestContext
