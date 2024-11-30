@@ -161,6 +161,39 @@ class TestServerTools:
             assert result.content[1].mimeType == "image/png"
             assert result.content[1].data == "abc"
 
+    async def test_tool_mixed_list_with_image(self, tmp_path: Path):
+        """Test that lists containing Image objects and other types are handled correctly"""
+        # Create a test image
+        image_path = tmp_path / "test.png"
+        image_path.write_bytes(b"test image data")
+
+        def mixed_list_fn() -> list:
+            return [
+                "text message",
+                Image(image_path),
+                {"key": "value"},
+                TextContent(type="text", text="direct content"),
+            ]
+
+        mcp = FlashMCP()
+        mcp.add_tool(mixed_list_fn)
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.call_tool("mixed_list_fn", {})
+            assert len(result.content) == 4
+            # Check text conversion
+            assert result.content[0].type == "text"
+            assert '"text message"' in result.content[0].text
+            # Check image conversion
+            assert result.content[1].type == "image"
+            assert result.content[1].mimeType == "image/png"
+            assert base64.b64decode(result.content[1].data) == b"test image data"
+            # Check dict conversion
+            assert result.content[2].type == "text"
+            assert '"key": "value"' in result.content[2].text
+            # Check direct TextContent
+            assert result.content[3].type == "text"
+            assert result.content[3].text == "direct content"
+
 
 class TestServerResources:
     async def test_text_resource(self):

@@ -160,6 +160,23 @@ class FlashMCP:
         if isinstance(value, (list, tuple)):
             if all(isinstance(x, (TextContent, ImageContent)) for x in value):
                 return value
+            # Handle mixed content including Image objects
+            result = []
+            for item in value:
+                if isinstance(item, (TextContent, ImageContent)):
+                    result.append(item)
+                elif isinstance(item, Image):
+                    result.append(item.to_image_content())
+                else:
+                    result.append(
+                        TextContent(
+                            type="text",
+                            text=json.dumps(
+                                item, indent=2, default=pydantic.json.pydantic_encoder
+                            ),
+                        )
+                    )
+            return result
 
         # Single content type
         if isinstance(value, (TextContent, ImageContent)):
