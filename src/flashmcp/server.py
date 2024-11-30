@@ -1,7 +1,7 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
 import pydantic_core
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union, Dict
 
 from mcp.server import RequestContext
 from pydantic import BaseModel
@@ -24,6 +24,9 @@ from mcp.types import (
     ResourceTemplate as MCPResourceTemplate,
     TextContent,
     ImageContent,
+    EmbeddedResource,
+    Prompt as MCPPrompt,
+    GetPromptResult,
 )
 from pydantic_settings import BaseSettings
 from pydantic.networks import _BaseUrl
@@ -33,6 +36,8 @@ from FlashMCP.resources import Resource, ResourceManager, FunctionResource
 from FlashMCP.tools import ToolManager
 from FlashMCP.utilities.logging import configure_logging
 from FlashMCP.utilities.types import Image
+from FlashMCP.prompts import Prompt, PromptManager
+from itertools import chain
 
 logger = get_logger(__name__)
 
@@ -60,6 +65,9 @@ class Settings(BaseSettings):
     # tool settings
     warn_on_duplicate_tools: bool = True
 
+    # prompt settings
+    warn_on_duplicate_prompts: bool = True
+
 
 class FlashMCP:
     def __init__(self, name=None, **settings: Optional[Settings]):
@@ -70,6 +78,9 @@ class FlashMCP:
         )
         self._resource_manager = ResourceManager(
             warn_on_duplicate_resources=self.settings.warn_on_duplicate_resources
+        )
+        self._prompt_manager = PromptManager(
+            warn_on_duplicate_prompts=self.settings.warn_on_duplicate_prompts
         )
 
         # Set up MCP protocol handlers
@@ -103,6 +114,8 @@ class FlashMCP:
         self._mcp_server.call_tool()(self.call_tool)
         self._mcp_server.list_resources()(self.list_resources)
         self._mcp_server.read_resource()(self.read_resource)
+        self._mcp_server.list_prompts()(self.list_prompts)
+        self._mcp_server.get_prompt()(self.get_prompt)
         # TODO: This has not been added to MCP yet, see https://github.com/jlowin/FlashMCP/issues/10
         # self._mcp_server.list_resource_templates()(self.list_resource_templates)
 
@@ -133,21 +146,10 @@ class FlashMCP:
         self, name: str, arguments: dict
     ) -> Sequence[Union[TextContent, ImageContent]]:
         """Call a tool by name with arguments."""
-        try:
-            context = self.get_context()
-            result = await self._tool_manager.call_tool(
-                name, arguments, context=context
-            )
-            return _convert_to_content(result)
-        except Exception as e:
-            logger.error(f"Error calling tool {name}: {e}")
-            return [
-                TextContent(
-                    type="text",
-                    text=str(e),
-                    is_error=True,
-                )
-            ]
+        context = self.get_context()
+        result = await self._tool_manager.call_tool(name, arguments, context=context)
+        converted_result = _convert_to_content(result)
+        return converted_result
 
     async def list_resources(self) -> list[MCPResource]:
         """List all available resources."""
@@ -335,6 +337,64 @@ class FlashMCP:
 
         return decorator
 
+    def add_prompt(self, prompt: Prompt) -> None:
+        """Add a prompt to the server.
+
+        Args:
+            prompt: A Prompt instance to add
+        """
+        self._prompt_manager.add_prompt(prompt)
+
+    def prompt(
+        self, name: Optional[str] = None, description: Optional[str] = None
+    ) -> Callable:
+        """Decorator to register a prompt.
+
+        Args:
+            name: Optional name for the prompt (defaults to function name)
+            description: Optional description of what the prompt does
+
+        Example:
+            @server.prompt()
+            def analyze_table(table_name: str) -> list[Message]:
+                schema = read_table_schema(table_name)
+                return [
+                    {
+                        "role": "user",
+                        "content": f"Analyze this schema:\n{schema}"
+                    }
+                ]
+
+            @server.prompt()
+            async def analyze_file(path: str) -> list[Message]:
+                content = await read_file(path)
+                return [
+                    {
+                        "role": "user",
+                        "content": {
+                            "type": "resource",
+                            "resource": {
+                                "uri": f"file://{path}",
+                                "text": content
+                            }
+                        }
+                    }
+                ]
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @prompt decorator was used incorrectly. "
+                "Did you forget to call it? Use @prompt() instead of @prompt"
+            )
+
+        def decorator(func: Callable) -> Callable:
+            prompt = Prompt.from_function(func, name=name, description=description)
+            self.add_prompt(prompt)
+            return func
+
+        return decorator
+
     async def run_stdio_async(self) -> None:
         """Run the server using stdio transport."""
         async with stdio_server() as (read_stream, write_stream):
@@ -381,45 +441,61 @@ class FlashMCP:
             log_level=self.settings.log_level,
         )
 
+    async def list_prompts(self) -> list[MCPPrompt]:
+        """List all available prompts."""
+        prompts = self._prompt_manager.list_prompts()
+        return [
+            MCPPrompt(
+                name=prompt.name,
+                description=prompt.description,
+                arguments=[
+                    {
+                        "name": arg.name,
+                        "description": arg.description,
+                        "required": arg.required,
+                    }
+                    for arg in (prompt.arguments or [])
+                ],
+            )
+            for prompt in prompts
+        ]
 
-def _convert_to_content(value: Any) -> Sequence[Union[TextContent, ImageContent]]:
-    """Convert a tool result to MCP content types."""
+    async def get_prompt(
+        self, name: str, arguments: Optional[Dict[str, Any]] = None
+    ) -> GetPromptResult:
+        """Get a prompt by name with arguments."""
+        try:
+            messages = await self._prompt_manager.render_prompt(name, arguments)
 
-    # Already a sequence of valid content types
-    if isinstance(value, (list, tuple)):
-        if all(isinstance(x, (TextContent, ImageContent)) for x in value):
-            return value
-        # Handle mixed content including Image objects
-        result = []
-        for item in value:
-            if isinstance(item, (TextContent, ImageContent)):
-                result.append(item)
-            elif isinstance(item, Image):
-                result.append(item.to_image_content())
-            else:
-                result.append(
-                    TextContent(
-                        type="text",
-                        text=json.dumps(pydantic_core.to_jsonable_python(item)),
-                    )
-                )
-        return result
+            return GetPromptResult(messages=pydantic_core.to_jsonable_python(messages))
+        except Exception as e:
+            logger.error(f"Error getting prompt {name}: {e}")
+            raise ValueError(str(e))
 
-    # Single content type
-    if isinstance(value, (TextContent, ImageContent)):
-        return [value]
 
-    # Image helper
-    if isinstance(value, Image):
-        return [value.to_image_content()]
+def _convert_to_content(
+    result: Any,
+) -> Sequence[Union[TextContent, ImageContent, EmbeddedResource]]:
+    """Convert a result to a sequence of content objects."""
+    if result is None:
+        return []
 
-    # All other types - convert to JSON string with pydantic encoder
-    return [
-        TextContent(
-            type="text",
-            text=json.dumps(pydantic_core.to_jsonable_python(value)),
-        )
-    ]
+    if isinstance(result, (TextContent, ImageContent, EmbeddedResource)):
+        return [result]
+
+    if isinstance(result, Image):
+        return [result.to_image_content()]
+
+    if isinstance(result, (list, tuple)):
+        return list(chain.from_iterable(_convert_to_content(item) for item in result))
+
+    if not isinstance(result, str):
+        try:
+            result = json.dumps(pydantic_core.to_jsonable_python(result))
+        except Exception:
+            result = str(result)
+
+    return [TextContent(type="text", text=result)]
 
 
 class Context(BaseModel):
