@@ -1,22 +1,27 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
 import asyncio
-import base64
 import functools
 import json
+import logging
 from typing import Any, Callable, Optional, Sequence, Union, Literal
 
+import pydantic.json
 from mcp.server import Server as MCPServer
 from mcp.server.stdio import stdio_server
 from mcp.server.sse import SseServerTransport
-from mcp.types import Resource as MCPResource
-from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
-from pydantic import BaseModel
+from mcp.types import (
+    Resource as MCPResource,
+    Tool,
+    TextContent,
+    ImageContent,
+)
 from pydantic_settings import BaseSettings
 from pydantic.networks import _BaseUrl
+
 from .exceptions import ResourceError
 from .resources import Resource, FunctionResource, ResourceManager
-from .tools import ToolManager
+from .tools import ToolManager, Image
 from .utilities.logging import get_logger, configure_logging
 
 logger = get_logger(__name__)
@@ -33,7 +38,9 @@ class Settings(BaseSettings):
 
     # Server settings
     debug: bool = False
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    log_level: Literal[
+        logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL
+    ] = logging.INFO
 
     # HTTP settings
     host: str = "0.0.0.0"
@@ -73,12 +80,14 @@ class FlashMCP:
         Args:
             transport: Transport protocol to use ("stdio" or "sse")
         """
+        TRANSPORTS = Literal["stdio", "sse"]
+        if transport not in TRANSPORTS.__args__:  # type: ignore
+            raise ValueError(f"Unknown transport: {transport}")
+
         if transport == "stdio":
             asyncio.run(self.run_stdio_async())
-        elif transport == "sse":
+        else:  # transport == "sse"
             asyncio.run(self.run_sse_async())
-        else:
-            raise ValueError(f"Unknown transport: {transport}")
 
     def _setup_handlers(self) -> None:
         """Set up core MCP protocol handlers."""
@@ -101,10 +110,20 @@ class FlashMCP:
 
     async def call_tool(
         self, name: str, arguments: dict
-    ) -> Sequence[Union[TextContent, ImageContent, EmbeddedResource]]:
+    ) -> Sequence[Union[TextContent, ImageContent]]:
         """Call a tool by name with arguments."""
-        result = await self._tool_manager.call_tool(name, arguments)
-        return [self._convert_to_content(result)]
+        try:
+            result = await self._tool_manager.call_tool(name, arguments)
+            return self._convert_to_content(result)
+        except Exception as e:
+            logger.error(f"Error calling tool {name}: {e}")
+            return [
+                TextContent(
+                    type="text",
+                    text=str(e),
+                    is_error=True,
+                )
+            ]
 
     async def list_resources(self) -> list[MCPResource]:
         """List all available resources."""
@@ -134,21 +153,31 @@ class FlashMCP:
 
     def _convert_to_content(
         self, value: Any
-    ) -> Union[TextContent, ImageContent, EmbeddedResource]:
-        """Convert Python values to MCP content types."""
-        if isinstance(value, (dict, list)):
-            return TextContent(type="text", text=json.dumps(value, indent=2))
-        if isinstance(value, str):
-            return TextContent(type="text", text=value)
-        if isinstance(value, bytes):
-            return ImageContent(
-                type="image",
-                data=base64.b64encode(value).decode(),
-                mimeType="application/octet-stream",
+    ) -> Sequence[Union[TextContent, ImageContent]]:
+        """Convert a tool result to MCP content types."""
+
+        # Already a sequence of valid content types
+        if isinstance(value, (list, tuple)):
+            if all(isinstance(x, (TextContent, ImageContent)) for x in value):
+                return value
+
+        # Single content type
+        if isinstance(value, (TextContent, ImageContent)):
+            return [value]
+
+        # Image helper
+        if isinstance(value, Image):
+            return [value.to_image_content()]
+
+        # All other types - convert to JSON string with pydantic encoder
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    value, indent=2, default=pydantic.json.pydantic_encoder
+                ),
             )
-        if isinstance(value, BaseModel):
-            return TextContent(type="text", text=value.model_dump_json(indent=2))
-        return TextContent(type="text", text=str(value))
+        ]
 
     def add_tool(
         self,

@@ -1,14 +1,42 @@
 """Tool management for FlashMCP."""
 
+import base64
 import inspect
-from typing import Any, Callable, Dict, Optional
+from pathlib import Path
+from typing import Any, Callable, Dict, Optional, Union
 
+from mcp.types import ImageContent
 from pydantic import BaseModel, Field, TypeAdapter, validate_call
 
 from .exceptions import ToolError
 from .utilities.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+class Image:
+    """Helper class for returning images from tools."""
+
+    def __init__(self, path: Union[str, Path], mime_type: Optional[str] = None):
+        self.path = Path(path)
+        self.mime_type = mime_type or self._guess_mime_type()
+
+    def _guess_mime_type(self) -> str:
+        """Guess MIME type from file extension."""
+        suffix = self.path.suffix.lower()
+        return {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+        }.get(suffix, "application/octet-stream")
+
+    def to_image_content(self) -> ImageContent:
+        """Convert to MCP ImageContent."""
+        with open(self.path, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        return ImageContent(type="image", data=data, mimeType=self.mime_type)
 
 
 class Tool(BaseModel):

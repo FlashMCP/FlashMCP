@@ -157,13 +157,12 @@ def dev(
         ),
     ] = None,
     with_packages: Annotated[
-        Optional[list[str]],
+        list[str],
         typer.Option(
             "--with",
             help="Additional packages to install",
-            multiple=True,
         ),
-    ] = None,
+    ] = [],
 ) -> None:
     """Run a FlashMCP server with the MCP Inspector."""
     file, server_object = _parse_file_path(file_spec)
