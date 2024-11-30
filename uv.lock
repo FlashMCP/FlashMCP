@@ -231,7 +231,7 @@ wheels = [
 
 [[package]]
 name = "FlashMCP"
-version = "0.2.1.dev8+gfc560b3.d20241130"
+version = "0.2.1.dev44+gbfae276.d20241130"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -254,8 +254,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.26.0" },
-    { name = "mcp", specifier = ">=1.0.0" },
-    { name = "pydantic", specifier = ">=2.5.3" },
+    { name = "mcp", specifier = ">=1.0.0,<2.0.0" },
+    { name = "pydantic", specifier = ">=2.5.3,<3.0.0" },
     { name = "pydantic-settings", specifier = ">=2.6.1" },
     { name = "typer", specifier = ">=0.9.0" },
 ]

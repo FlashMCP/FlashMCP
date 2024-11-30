@@ -1,12 +1,13 @@
 from mcp.shared.memory import (
     create_connected_server_and_client_session as client_session,
 )
+from mcp.shared.exceptions import McpError
 from FlashMCP import FlashMCP, Context
 from FlashMCP.resources import FileResource, FunctionResource
 from FlashMCP.utilities.types import Image
 from mcp.types import TextContent, ImageContent
+from FlashMCP.prompts.base import Message, UserMessage, TextContent, EmbeddedResource
 import pytest
-from pydantic import BaseModel
 from pathlib import Path
 import base64
 from typing import Union, TYPE_CHECKING
@@ -67,11 +68,6 @@ def error_tool_fn() -> None:
     raise ValueError("Test error")
 
 
-class ErrorResponse(BaseModel):
-    is_error: bool = True
-    message: str
-
-
 def image_tool_fn(path: str) -> Image:
     return Image(path)
 
@@ -113,7 +109,7 @@ class TestServerTools:
             assert len(result.content) == 1
             assert result.content[0].type == "text"
             assert "Test error" in result.content[0].text
-            assert result.content[0].is_error is True
+            assert result.isError is True
 
     async def test_tool_exception_content(self):
         """Test that exception details are properly formatted in the response"""
@@ -121,11 +117,10 @@ class TestServerTools:
         mcp.add_tool(error_tool_fn)
         async with client_session(mcp._mcp_server) as client:
             result = await client.call_tool("error_tool_fn", {})
-            content = result.content[0]
-            assert content.type == "text"
-            assert isinstance(content.text, str)
-            assert "Test error" in content.text
-            assert content.is_error is True
+            assert result.content[0].type == "text"
+            assert isinstance(result.content[0].text, str)
+            assert "Test error" in result.content[0].text
+            assert result.isError is True
 
     async def test_tool_text_conversion(self):
         mcp = FlashMCP()
@@ -185,7 +180,7 @@ class TestServerTools:
             assert len(result.content) == 4
             # Check text conversion
             assert result.content[0].type == "text"
-            assert '"text message"' in result.content[0].text
+            assert "text message" in result.content[0].text
             # Check image conversion
             assert result.content[1].type == "image"
             assert result.content[1].mimeType == "image/png"
@@ -463,3 +458,134 @@ class TestContextInjection:
             result = await client.call_tool("tool_with_resource", {})
             assert len(result.content) == 1
             assert "Read resource: resource data" in result.content[0].text
+
+
+class TestServerPrompts:
+    """Test prompt functionality in FlashMCP server."""
+
+    async def test_prompt_decorator(self):
+        """Test that the prompt decorator registers prompts correctly."""
+        mcp = FlashMCP()
+
+        @mcp.prompt()
+        def fn() -> str:
+            return "Hello, world!"
+
+        prompts = mcp._prompt_manager.list_prompts()
+        assert len(prompts) == 1
+        assert prompts[0].name == "fn"
+        # Don't compare functions directly since validate_call wraps them
+        assert await prompts[0].render() == [
+            UserMessage(content=TextContent(type="text", text="Hello, world!"))
+        ]
+
+    def test_prompt_decorator_with_name(self):
+        """Test prompt decorator with custom name."""
+        mcp = FlashMCP()
+
+        @mcp.prompt(name="custom")
+        def fn() -> str:
+            return "Hello, world!"
+
+        prompts = mcp._prompt_manager.list_prompts()
+        assert len(prompts) == 1
+        assert prompts[0].name == "custom"
+
+    def test_prompt_decorator_with_description(self):
+        """Test prompt decorator with custom description."""
+        mcp = FlashMCP()
+
+        @mcp.prompt(description="A custom description")
+        def fn() -> str:
+            return "Hello, world!"
+
+        prompts = mcp._prompt_manager.list_prompts()
+        assert len(prompts) == 1
+        assert prompts[0].description == "A custom description"
+
+    def test_prompt_decorator_error(self):
+        """Test error when decorator is used incorrectly."""
+        mcp = FlashMCP()
+        with pytest.raises(TypeError, match="decorator was used incorrectly"):
+
+            @mcp.prompt
+            def fn() -> str:
+                return "Hello, world!"
+
+    async def test_list_prompts(self):
+        """Test listing prompts through MCP protocol."""
+        mcp = FlashMCP()
+
+        @mcp.prompt()
+        def fn(name: str, optional: str = "default") -> str:
+            return f"Hello, {name}!"
+
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.list_prompts()
+            assert len(result.prompts) == 1
+            assert result.prompts[0].name == "fn"
+            assert len(result.prompts[0].arguments) == 2
+            assert result.prompts[0].arguments[0].name == "name"
+            assert result.prompts[0].arguments[0].required is True
+            assert result.prompts[0].arguments[1].name == "optional"
+            assert result.prompts[0].arguments[1].required is False
+
+    async def test_get_prompt(self):
+        """Test getting a prompt through MCP protocol."""
+        mcp = FlashMCP()
+
+        @mcp.prompt()
+        def fn(name: str) -> str:
+            return f"Hello, {name}!"
+
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.get_prompt("fn", {"name": "World"})
+            assert len(result.messages) == 1
+            assert result.messages[0].role == "user"
+            assert result.messages[0].content.type == "text"
+            assert result.messages[0].content.text == "Hello, World!"
+
+    async def test_get_prompt_with_resource(self):
+        """Test getting a prompt that returns resource content."""
+        mcp = FlashMCP()
+
+        @mcp.prompt()
+        def fn() -> Message:
+            return UserMessage(
+                content=EmbeddedResource(
+                    type="resource",
+                    resource={
+                        "uri": "file://test.txt",
+                        "text": "File contents",
+                        "mimeType": "text/plain",
+                    },
+                )
+            )
+
+        async with client_session(mcp._mcp_server) as client:
+            result = await client.get_prompt("fn")
+            assert len(result.messages) == 1
+            assert result.messages[0].role == "user"
+            assert result.messages[0].content.type == "resource"
+            assert str(result.messages[0].content.resource.uri) == "file://test.txt/"
+            assert result.messages[0].content.resource.text == "File contents"
+            assert result.messages[0].content.resource.mimeType == "text/plain"
+
+    async def test_get_unknown_prompt(self):
+        """Test error when getting unknown prompt."""
+        mcp = FlashMCP()
+        async with client_session(mcp._mcp_server) as client:
+            with pytest.raises(McpError, match="Unknown prompt"):
+                await client.get_prompt("unknown")
+
+    async def test_get_prompt_missing_args(self):
+        """Test error when required arguments are missing."""
+        mcp = FlashMCP()
+
+        @mcp.prompt()
+        def fn(name: str) -> str:
+            return f"Hello, {name}!"
+
+        async with client_session(mcp._mcp_server) as client:
+            with pytest.raises(McpError, match="Missing required arguments"):
+                await client.get_prompt("fn")

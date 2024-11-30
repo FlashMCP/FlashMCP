@@ -10,8 +10,19 @@ mcp = FlashMCP("Echo Server")
 
 
 @mcp.tool()
-def echo(text: str) -> str:
+def echo_tool(text: str) -> str:
     """Echo the input text"""
+    return text
+
+
+@mcp.resource("echo://{text}")
+def echo_resource(text: str) -> str:
+    """Echo the input text"""
+    return f"Echo: {text}"
+
+
+@mcp.prompt("echo")
+def echo_prompt(text: str) -> str:
     return text
 
 
