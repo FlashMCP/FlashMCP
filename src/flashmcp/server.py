@@ -13,7 +13,8 @@ from mcp.server.stdio import stdio_server
 from mcp.server.sse import SseServerTransport
 from mcp.types import (
     Resource as MCPResource,
-    Tool,
+    Tool as MCPTool,
+    ResourceTemplate as MCPResourceTemplate,
     TextContent,
     ImageContent,
 )
@@ -95,12 +96,14 @@ class FlashMCP:
         self._mcp_server.call_tool()(self.call_tool)
         self._mcp_server.list_resources()(self.list_resources)
         self._mcp_server.read_resource()(self.read_resource)
+        # TODO: This has not been added to MCP yet, see https://github.com/jlowin/FlashMCP/issues/10
+        # self._mcp_server.list_resource_templates()(self.list_resource_templates)
 
-    async def list_tools(self) -> list[Tool]:
+    async def list_tools(self) -> list[MCPTool]:
         """List all available tools."""
         tools = self._tool_manager.list_tools()
         return [
-            Tool(
+            MCPTool(
                 name=info.name,
                 description=info.description,
                 inputSchema=info.parameters,
@@ -137,6 +140,17 @@ class FlashMCP:
                 mimeType=resource.mime_type,
             )
             for resource in resources
+        ]
+
+    async def list_resource_templates(self) -> list[MCPResourceTemplate]:
+        templates = self._resource_manager.list_templates()
+        return [
+            MCPResourceTemplate(
+                uriTemplate=template.uri_template,
+                name=template.name,
+                description=template.description,
+            )
+            for template in templates
         ]
 
     async def read_resource(self, uri: _BaseUrl) -> Union[str, bytes]:
