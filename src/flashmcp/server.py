@@ -3,7 +3,6 @@
 import asyncio
 import functools
 import json
-import logging
 from typing import Any, Callable, Optional, Sequence, Union, Literal
 
 import pydantic.json
@@ -38,9 +37,7 @@ class Settings(BaseSettings):
 
     # Server settings
     debug: bool = False
-    log_level: Literal[
-        logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL
-    ] = logging.INFO
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     # HTTP settings
     host: str = "0.0.0.0"
