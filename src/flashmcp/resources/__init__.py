@@ -8,7 +8,7 @@ from .types import (
     DirectoryResource,
 )
 from .templates import ResourceTemplate
-from .manager import ResourceManager
+from .resource_manager import ResourceManager
 
 __all__ = [
     "Resource",
