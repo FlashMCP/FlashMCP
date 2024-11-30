@@ -108,6 +108,7 @@ class FlashMCP:
 
     async def list_resources(self) -> list[MCPResource]:
         """List all available resources."""
+
         resources = self._resource_manager.list_resources()
         return [
             MCPResource(

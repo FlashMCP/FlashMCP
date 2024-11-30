@@ -26,6 +26,7 @@ app = typer.Typer(
 def _build_uv_command(
     file: Path,
     uv_directory: Optional[Path] = None,
+    with_packages: Optional[list[str]] = None,
 ) -> list[str]:
     """Build the uv run command."""
     cmd = ["uv"]
@@ -33,7 +34,14 @@ def _build_uv_command(
     if uv_directory:
         cmd.extend(["--directory", str(uv_directory)])
 
-    cmd.extend(["run", str(file)])
+    cmd.extend(["run", "--with", "FlashMCP"])
+
+    if with_packages:
+        for pkg in with_packages:
+            if pkg:
+                cmd.extend(["--with", pkg])
+
+    cmd.append(str(file))
     return cmd
 
 
@@ -148,6 +156,14 @@ def dev(
             resolve_path=True,
         ),
     ] = None,
+    with_packages: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--with",
+            help="Additional packages to install",
+            multiple=True,
+        ),
+    ] = None,
 ) -> None:
     """Run a FlashMCP server with the MCP Inspector."""
     file, server_object = _parse_file_path(file_spec)
@@ -158,11 +174,12 @@ def dev(
             "file": str(file),
             "server_object": server_object,
             "uv_directory": str(uv_directory) if uv_directory else None,
+            "with_packages": with_packages,
         },
     )
 
     try:
-        uv_cmd = _build_uv_command(file, uv_directory)
+        uv_cmd = _build_uv_command(file, uv_directory, with_packages)
         # Run the MCP Inspector command
         process = subprocess.run(
             ["npx", "@modelcontextprotocol/inspector"] + uv_cmd,
@@ -227,8 +244,6 @@ def run(
     )
 
     try:
-        uv_cmd = _build_uv_command(file, uv_directory)
-
         # Import and get server object
         server = _import_server(file, server_object)
 

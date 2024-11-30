@@ -222,7 +222,7 @@ wheels = [
 
 [[package]]
 name = "FlashMCP"
-version = "0.1.dev4+g18aaf41.d20241129"
+version = "0.1.1.dev1+gca7438f.d20241130"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

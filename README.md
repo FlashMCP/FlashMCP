@@ -81,8 +81,20 @@ def calculate(x: int, y: int) -> int:
 FlashMCP includes a development server with the MCP Inspector for testing your server:
 
 ```bash
+# Basic usage
 FlashMCP dev your_server.py
+
+# Load dependencies from current directory's pyproject.toml
+FlashMCP dev your_server.py --uv-directory .
+
+# Install additional packages
+FlashMCP dev your_server.py --with pandas,numpy
+
+# Combine both
+FlashMCP dev your_server.py --uv-directory . --with pandas,numpy
 ```
+
+The `--with` flag automatically includes `FlashMCP` and any additional packages you specify. The `--uv-directory` flag tells uv where to find your project's dependencies.
 
 ### Installing in Claude
 
