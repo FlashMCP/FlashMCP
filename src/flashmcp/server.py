@@ -17,6 +17,7 @@ from .exceptions import ResourceError
 from .resources import Resource, FunctionResource, ResourceManager
 from .tools import ToolManager
 from .utilities.logging import get_logger, configure_logging
+from pydantic.networks import _BaseUrl
 
 logger = get_logger(__name__)
 
@@ -56,14 +57,19 @@ class FlashMCP:
             warn_on_duplicate_resources=self.settings.warn_on_duplicate_resources
         )
 
+        # Set up MCP protocol handlers
+        self._setup_handlers()
+
         # Configure logging
         configure_logging(self.settings.log_level)
-
-        self._setup_handlers()
 
     @property
     def name(self) -> str:
         return self._mcp_server.name
+
+    async def run(self, *args, **kwargs) -> None:
+        """Run the FlashMCP server."""
+        await self._mcp_server.run(*args, **kwargs)
 
     def _setup_handlers(self) -> None:
         """Set up core MCP protocol handlers."""
@@ -104,7 +110,7 @@ class FlashMCP:
             for resource in resources
         ]
 
-    async def read_resource(self, uri: str) -> Union[str, bytes]:
+    async def read_resource(self, uri: _BaseUrl) -> Union[str, bytes]:
         """Read a resource by URI."""
         resource = self._resource_manager.get_resource(uri)
         if not resource:
@@ -170,42 +176,40 @@ class FlashMCP:
 
     def resource(
         self,
-        name: str,
+        uri: str,
         *,
+        name: Optional[str] = None,
         description: Optional[str] = None,
         mime_type: Optional[str] = None,
     ) -> Callable:
-        """Decorator to register a function as a dynamic resource.
+        """Decorator to register a function as a resource.
 
-        The function will be called with kwargs parsed from the URI query string.
-        For example, a URI of "fn://my_func?x=1&y=2" will call the function with
-        kwargs {"x": "1", "y": "2"}.
+        The function will be called when the resource is read to generate its content.
 
         Args:
-            name: Name for the resource (used in fn:// URI)
+            uri: URI for the resource (e.g. "resource://my-resource")
             description: Optional description of the resource
             mime_type: Optional MIME type for the resource
 
         Example:
-            @server.resource("my_func")
-            def get_data(x: str, y: str) -> str:
-                # Called with fn://my_func?x=1&y=2
-                return f"x={x}, y={y}"
+            @server.resource("resource://my-resource")
+            def get_data() -> str:
+                return "Hello, world!"
         """
         # Check if user passed function directly instead of calling decorator
-        if callable(name):
+        if callable(uri):
             raise TypeError(
                 "The @resource decorator was used incorrectly. "
-                "Did you forget to call it? Use @resource('name') instead of @resource"
+                "Did you forget to call it? Use @resource('uri') instead of @resource"
             )
 
         def decorator(func: Callable) -> Callable:
             @functools.wraps(func)
-            def wrapper(**kwargs) -> Any:
-                return func(**kwargs)
+            def wrapper() -> Any:
+                return func()
 
             resource = FunctionResource(
-                uri=f"fn://{name}",  # Base URI, params added when called
+                uri=uri,
                 name=name,
                 description=description,
                 mime_type=mime_type or "text/plain",
@@ -215,10 +219,6 @@ class FlashMCP:
             return wrapper
 
         return decorator
-
-    async def run(self, *args, **kwargs) -> None:
-        """Run the FlashMCP server."""
-        await self._mcp_server.run(*args, **kwargs)
 
     @classmethod
     async def run_stdio(cls, app: "FlashMCP") -> None:

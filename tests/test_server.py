@@ -31,7 +31,7 @@ class TestServer:
     async def test_add_resource_decorator(self):
         mcp = FlashMCP()
 
-        @mcp.resource("data")
+        @mcp.resource("r://data")
         def get_data(x: str) -> str:
             return f"Data: {x}"
 

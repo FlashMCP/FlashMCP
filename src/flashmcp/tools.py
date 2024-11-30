@@ -3,7 +3,7 @@
 import inspect
 from typing import Any, Callable, Dict, Optional
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter, validate_call
 
 from .exceptions import ToolError
 from .utilities.logging import get_logger
@@ -37,13 +37,16 @@ class Tool(BaseModel):
         is_async = inspect.iscoroutinefunction(func)
 
         # Get schema from TypeAdapter - will fail if function isn't properly typed
-        schema = TypeAdapter(func).json_schema()
+        parameters = TypeAdapter(func).json_schema()
+
+        # ensure the arguments are properly cast
+        func = validate_call(func)
 
         return cls(
             func=func,
             name=func_name,
             description=func_doc,
-            parameters=schema,
+            parameters=parameters,
             is_async=is_async,
         )
 
@@ -94,4 +97,5 @@ class ToolManager:
         tool = self.get_tool(name)
         if not tool:
             raise ToolError(f"Unknown tool: {name}")
+
         return await tool.run(arguments)

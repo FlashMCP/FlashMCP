@@ -54,10 +54,10 @@ class TestResourceValidation:
             name="test",
             func=dummy_func,
         )
-        assert resource.uri == "http://example.com/data"
+        assert str(resource.uri) == "http://example.com/data"
 
         # Missing protocol
-        with pytest.raises(ValueError, match="URI must have a protocol"):
+        with pytest.raises(ValueError, match="Input should be a valid URL"):
             FunctionResource(
                 uri="invalid",
                 name="test",
@@ -65,7 +65,7 @@ class TestResourceValidation:
             )
 
         # Missing host
-        with pytest.raises(ValueError, match="URI must have a host"):
+        with pytest.raises(ValueError, match="Input should be a valid URL"):
             FunctionResource(
                 uri="http://",
                 name="test",
@@ -85,7 +85,7 @@ class TestFileResource:
             mime_type="text/plain",
             path=temp_file,
         )
-        assert resource.uri == f"file://{temp_file}"
+        assert str(resource.uri) == f"file://{temp_file}"
         assert resource.name == "test"
         assert resource.description == "test file"
         assert resource.mime_type == "text/plain"
@@ -162,13 +162,13 @@ class TestFunctionResource:
             mime_type="text/plain",
             func=my_func,
         )
-        assert resource.uri == "fn://test"
+        assert str(resource.uri) == "fn://test"
         assert resource.name == "test"
         assert resource.description == "test function"
         assert resource.mime_type == "text/plain"
         assert resource.func == my_func
 
-    async def test_function_resource_read_no_params(self):
+    async def test_function_resource_read(self):
         """Test reading a FunctionResource with no parameters."""
 
         def my_func() -> str:
@@ -181,86 +181,6 @@ class TestFunctionResource:
         )
         content = await resource.read()
         assert content == "test content"
-
-    async def test_function_resource_read_with_params(self):
-        """Test reading a FunctionResource with query parameters."""
-
-        def my_func(x: str, y: str) -> str:
-            return f"x={x}, y={y}"
-
-        resource = FunctionResource(
-            uri="fn://test?x=1&y=2",
-            name="test",
-            func=my_func,
-        )
-        content = await resource.read()
-        assert content == "x=1, y=2"
-
-    async def test_function_resource_read_returns_resource(self, temp_file: Path):
-        """Test reading a FunctionResource that returns another Resource."""
-
-        def my_func(name: str = "test") -> FileResource:
-            return FileResource(
-                uri=f"file://{temp_file}",
-                name=name,
-                path=temp_file,
-            )
-
-        resource = FunctionResource(
-            uri="fn://test?name=example",
-            name="test",
-            func=my_func,
-        )
-        content = await resource.read()
-        assert content == "test content"
-
-    async def test_function_resource_read_error(self):
-        """Test error handling when reading a FunctionResource."""
-
-        def my_func(x: str) -> str:
-            raise ValueError(f"test error: {x}")
-
-        resource = FunctionResource(
-            uri="fn://test?x=bad",
-            name="test",
-            func=my_func,
-        )
-        with pytest.raises(
-            ValueError, match="Error calling function my_func: test error: bad"
-        ):
-            await resource.read()
-
-    def test_parse_uri_params(self):
-        """Test parsing URI parameters."""
-
-        def my_func() -> str:
-            return "test"
-
-        resource = FunctionResource(
-            uri="fn://test?x=1&y=hello&z=true",
-            name="test",
-            func=my_func,
-        )
-        params = resource._parse_uri_params()
-        assert params == {
-            "x": "1",
-            "y": "hello",
-            "z": "true",
-        }
-
-    def test_parse_uri_no_params(self):
-        """Test parsing URI with no parameters."""
-
-        def my_func() -> str:
-            return "test"
-
-        resource = FunctionResource(
-            uri="fn://test",
-            name="test",
-            func=my_func,
-        )
-        params = resource._parse_uri_params()
-        assert params == {}
 
 
 class TestResourceManagerAdd:
@@ -278,7 +198,7 @@ class TestResourceManagerAdd:
         )
         added = manager.add_resource(resource)
         assert isinstance(added, FileResource)
-        assert added.uri == f"file://{temp_file}"
+        assert str(added.uri) == f"file://{temp_file}"
         assert added.name == "test"
         assert added.description == "test file"
         assert added.mime_type == "text/plain"
