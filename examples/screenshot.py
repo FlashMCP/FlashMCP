@@ -1,33 +1,31 @@
 # /// script
-# dependencies = ["pyautogui"]
+# dependencies = ["FlashMCP", "pyautogui", "Pillow"]
 # ///
 
 """
 FlashMCP Screenshot Example
 
-A simple example that provides a tool to capture screenshots.
+Give Claude a tool to capture and view screenshots.
 """
 
-import base64
 import io
-import pyautogui
 
-from FlashMCP.server import FlashMCP
+from FlashMCP import FlashMCP, Image
 
 # Create server
 mcp = FlashMCP("Screenshot Demo")
 
 
 @mcp.tool()
-def take_screenshot() -> str:
-    """Take a screenshot and return it as a base64 encoded string"""
-    # Capture the screen
-    screenshot = pyautogui.screenshot()
+def take_screenshot() -> Image:
+    """Take a screenshot of the user's screen and return it as an image"""
+    import pyautogui
 
-    # Convert to base64
+    screenshot = pyautogui.screenshot()
     buffer = io.BytesIO()
-    screenshot.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode()
+    # if the file exceeds ~1MB, it will be rejected by Claude
+    screenshot.convert("RGB").save(buffer, format="JPEG", quality=60, optimize=True)
+    return Image(data=buffer.getvalue(), format="jpeg")
 
 
 if __name__ == "__main__":

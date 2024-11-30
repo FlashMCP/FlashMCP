@@ -275,7 +275,7 @@ def install(
         typer.Option(
             "--name",
             "-n",
-            help="Custom name for the server (defaults to file name)",
+            help="Custom name for the server (defaults to server's name attribute or file name)",
         ),
     ] = None,
     with_editable: Annotated[
@@ -324,17 +324,28 @@ def install(
         logger.error("Claude app not found")
         sys.exit(1)
 
+    # Try to import server to get its name, but fall back to file name if dependencies missing
+    name = server_name
+    if not name:
+        try:
+            server = _import_server(file, server_object)
+            name = server.name
+        except (ImportError, ModuleNotFoundError) as e:
+            logger.debug(
+                "Could not import server (likely missing dependencies), using file name",
+                extra={"error": str(e)},
+            )
+            name = file.stem
+
     if claude.update_claude_config(
         file,
-        server_name,
+        name,
         with_editable=with_editable,
         with_packages=with_packages,
         force=force,
     ):
-        name = server_name or file.stem
         print(f"Successfully installed {name} in Claude app")
     else:
-        name = server_name or file.stem
         print(f"Failed to install {name} in Claude app")
         sys.exit(1)
 

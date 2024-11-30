@@ -56,6 +56,7 @@ class Image:
                 data = base64.b64encode(f.read()).decode()
         else:
             data = base64.b64encode(self.data).decode()
+
         return ImageContent(type="image", data=data, mimeType=self._mime_type)
 
 
