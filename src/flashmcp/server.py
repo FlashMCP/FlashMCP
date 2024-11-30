@@ -1,43 +1,47 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
-import pydantic_core
-from typing import Any, Literal, Optional, Union, Dict
-
-from mcp.server import RequestContext
-from pydantic import BaseModel
-from pydantic.networks import AnyUrl
-
-from FlashMCP.utilities.logging import get_logger
 import asyncio
 import functools
-import json
-from typing import Callable, Sequence
 import inspect
+import json
 import re
+from itertools import chain
+from typing import Any, Callable, Dict, Literal, Sequence
 
+import pydantic_core
+import uvicorn
 from mcp.server import Server as MCPServer
-from mcp.server.stdio import stdio_server
 from mcp.server.sse import SseServerTransport
+from mcp.server.stdio import stdio_server
+from mcp.shared.context import RequestContext
+from mcp.types import (
+    EmbeddedResource,
+    GetPromptResult,
+    ImageContent,
+    TextContent,
+)
+from mcp.types import (
+    Prompt as MCPPrompt,
+)
 from mcp.types import (
     Resource as MCPResource,
-    Tool as MCPTool,
-    ResourceTemplate as MCPResourceTemplate,
-    TextContent,
-    ImageContent,
-    EmbeddedResource,
-    Prompt as MCPPrompt,
-    GetPromptResult,
 )
-from pydantic_settings import BaseSettings
-from pydantic.networks import _BaseUrl
+from mcp.types import (
+    ResourceTemplate as MCPResourceTemplate,
+)
+from mcp.types import (
+    Tool as MCPTool,
+)
+from pydantic import BaseModel
+from pydantic.networks import AnyUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from FlashMCP.exceptions import ResourceError
-from FlashMCP.resources import Resource, ResourceManager, FunctionResource
-from FlashMCP.tools import ToolManager
-from FlashMCP.utilities.logging import configure_logging
-from FlashMCP.utilities.types import Image
 from FlashMCP.prompts import Prompt, PromptManager
-from itertools import chain
+from FlashMCP.resources import FunctionResource, Resource, ResourceManager
+from FlashMCP.tools import ToolManager
+from FlashMCP.utilities.logging import configure_logging, get_logger
+from FlashMCP.utilities.types import Image
 
 logger = get_logger(__name__)
 
@@ -49,7 +53,7 @@ class Settings(BaseSettings):
     For example, FASTMCP_DEBUG=true will set debug=True.
     """
 
-    model_config: dict = dict(env_prefix="FASTMCP_")
+    model_config: SettingsConfigDict = SettingsConfigDict(env_prefix="FASTMCP_")
 
     # Server settings
     debug: bool = False
@@ -70,7 +74,7 @@ class Settings(BaseSettings):
 
 
 class FlashMCP:
-    def __init__(self, name=None, **settings: Optional[Settings]):
+    def __init__(self, name: str | None = None, **settings: Any):
         self.settings = Settings(**settings)
         self._mcp_server = MCPServer(name=name or "FlashMCP")
         self._tool_manager = ToolManager(
@@ -144,7 +148,7 @@ class FlashMCP:
 
     async def call_tool(
         self, name: str, arguments: dict
-    ) -> Sequence[Union[TextContent, ImageContent]]:
+    ) -> Sequence[TextContent | ImageContent]:
         """Call a tool by name with arguments."""
         context = self.get_context()
         result = await self._tool_manager.call_tool(name, arguments, context=context)
@@ -158,7 +162,7 @@ class FlashMCP:
         return [
             MCPResource(
                 uri=resource.uri,
-                name=resource.name,
+                name=resource.name or "",
                 description=resource.description,
                 mimeType=resource.mime_type,
             )
@@ -176,7 +180,7 @@ class FlashMCP:
             for template in templates
         ]
 
-    async def read_resource(self, uri: _BaseUrl) -> Union[str, bytes]:
+    async def read_resource(self, uri: AnyUrl | str) -> str | bytes:
         """Read a resource by URI."""
         resource = await self._resource_manager.get_resource(uri)
         if not resource:
@@ -191,8 +195,8 @@ class FlashMCP:
     def add_tool(
         self,
         fn: Callable,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
     ) -> None:
         """Add a tool to the server.
 
@@ -206,9 +210,7 @@ class FlashMCP:
         """
         self._tool_manager.add_tool(fn, name=name, description=description)
 
-    def tool(
-        self, name: Optional[str] = None, description: Optional[str] = None
-    ) -> Callable:
+    def tool(self, name: str | None = None, description: str | None = None) -> Callable:
         """Decorator to register a tool.
 
         Tools can optionally request a Context object by adding a parameter with the Context type annotation.
@@ -258,9 +260,9 @@ class FlashMCP:
         self,
         uri: str,
         *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        mime_type: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        mime_type: str | None = None,
     ) -> Callable:
         """Decorator to register a function as a resource.
 
@@ -326,7 +328,7 @@ class FlashMCP:
             else:
                 # Register as regular resource
                 resource = FunctionResource(
-                    uri=uri,
+                    uri=AnyUrl(uri),
                     name=name,
                     description=description,
                     mime_type=mime_type or "text/plain",
@@ -346,7 +348,7 @@ class FlashMCP:
         self._prompt_manager.add_prompt(prompt)
 
     def prompt(
-        self, name: Optional[str] = None, description: Optional[str] = None
+        self, name: str | None = None, description: str | None = None
     ) -> Callable:
         """Decorator to register a prompt.
 
@@ -398,7 +400,7 @@ class FlashMCP:
     async def run_stdio_async(self) -> None:
         """Run the server using stdio transport."""
         async with stdio_server() as (read_stream, write_stream):
-            print(f'Starting "{self.name}"...')
+            logger.info(f'Starting "{self.name}"...')
             await self._mcp_server.run(
                 read_stream,
                 write_stream,
@@ -409,7 +411,6 @@ class FlashMCP:
         """Run the server using SSE transport."""
         from starlette.applications import Starlette
         from starlette.routing import Route
-        import uvicorn
 
         sse = SseServerTransport("/messages")
 
@@ -434,12 +435,14 @@ class FlashMCP:
             ],
         )
 
-        uvicorn.run(
+        config = uvicorn.Config(
             starlette_app,
             host=self.settings.host,
             port=self.settings.port,
-            log_level=self.settings.log_level,
+            log_level=self.settings.log_level.lower(),
         )
+        server = uvicorn.Server(config)
+        await server.serve()
 
     async def list_prompts(self) -> list[MCPPrompt]:
         """List all available prompts."""
@@ -461,7 +464,7 @@ class FlashMCP:
         ]
 
     async def get_prompt(
-        self, name: str, arguments: Optional[Dict[str, Any]] = None
+        self, name: str, arguments: Dict[str, Any] | None = None
     ) -> GetPromptResult:
         """Get a prompt by name with arguments."""
         try:
@@ -475,7 +478,7 @@ class FlashMCP:
 
 def _convert_to_content(
     result: Any,
-) -> Sequence[Union[TextContent, ImageContent, EmbeddedResource]]:
+) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
     """Convert a result to a sequence of content objects."""
     if result is None:
         return []
@@ -532,14 +535,14 @@ class Context(BaseModel):
     The context is optional - tools that don't need it can omit the parameter.
     """
 
-    _request_context: RequestContext
-    _FlashMCP: FlashMCP
+    _request_context: RequestContext | None
+    _FlashMCP: FlashMCP | None
 
     def __init__(
         self,
         *,
-        request_context: RequestContext = None,
-        FlashMCP: FlashMCP = None,
+        request_context: RequestContext | None = None,
+        FlashMCP: FlashMCP | None = None,
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
@@ -561,7 +564,7 @@ class Context(BaseModel):
         return self._request_context
 
     async def report_progress(
-        self, progress: float, total: Optional[float] = None
+        self, progress: float, total: float | None = None
     ) -> None:
         """Report progress for the current operation.
 
@@ -583,7 +586,7 @@ class Context(BaseModel):
             progress_token=progress_token, progress=progress, total=total
         )
 
-    async def read_resource(self, uri: Union[str, AnyUrl]) -> Union[str, bytes]:
+    async def read_resource(self, uri: str | AnyUrl) -> str | bytes:
         """Read a resource by URI.
 
         Args:
@@ -592,6 +595,9 @@ class Context(BaseModel):
         Returns:
             The resource content as either text or bytes
         """
+        assert (
+            self._FlashMCP is not None
+        ), "Context is not available outside of a request"
         return await self._FlashMCP.read_resource(uri)
 
     def log(
@@ -599,7 +605,7 @@ class Context(BaseModel):
         level: Literal["debug", "info", "warning", "error"],
         message: str,
         *,
-        logger_name: Optional[str] = None,
+        logger_name: str | None = None,
     ) -> None:
         """Send a log message to the client.
 
@@ -614,14 +620,18 @@ class Context(BaseModel):
         )
 
     @property
-    def client_id(self) -> Optional[str]:
+    def client_id(self) -> str | None:
         """Get the client ID if available."""
-        return self.request_context.meta.clientId if self.request_context.meta else None
+        return (
+            getattr(self.request_context.meta, "client_id", None)
+            if self.request_context.meta
+            else None
+        )
 
     @property
     def request_id(self) -> str:
         """Get the unique ID for this request."""
-        return self.request_context.request_id
+        return str(self.request_context.request_id)
 
     @property
     def session(self):

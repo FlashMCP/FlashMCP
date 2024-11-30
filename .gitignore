@@ -12,3 +12,7 @@ wheels/
 
 
 src/FlashMCP/_version.py
+
+# editors
+.cursorrules
+.vscode/

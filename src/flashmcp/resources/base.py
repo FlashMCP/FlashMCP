@@ -3,15 +3,18 @@
 import abc
 from typing import Union
 
-from pydantic import BaseModel, Field, field_validator
-from pydantic.networks import _BaseUrl
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
+from FlashMCP.types import LaxAnyUrl
 
 
 class Resource(BaseModel, abc.ABC):
     """Base class for all resources."""
 
-    uri: _BaseUrl = Field(description="URI of the resource")
-    name: str = Field(description="Name of the resource", default=None)
+    model_config = ConfigDict(validate_default=True)
+
+    uri: LaxAnyUrl = Field(description="URI of the resource")
+    name: str | None = Field(description="Name of the resource", default=None)
     description: str | None = Field(
         description="Description of the resource", default=None
     )
@@ -23,13 +26,12 @@ class Resource(BaseModel, abc.ABC):
 
     @field_validator("name", mode="before")
     @classmethod
-    def set_default_name(cls, name: str | None, info) -> str:
+    def set_default_name(cls, name: str | None, info: ValidationInfo) -> str:
         """Set default name from URI if not provided."""
         if name:
             return name
         # Extract everything after the protocol (e.g., "desktop" from "resource://desktop")
-        uri = info.data.get("uri")
-        if uri:
+        if uri := info.data.get("uri"):
             uri_str = str(uri)
             if "://" in uri_str:
                 name = uri_str.split("://", 1)[1]
@@ -41,7 +43,3 @@ class Resource(BaseModel, abc.ABC):
     async def read(self) -> Union[str, bytes]:
         """Read the resource content."""
         pass
-
-    model_config = {
-        "validate_default": True,
-    }
