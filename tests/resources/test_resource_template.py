@@ -12,7 +12,7 @@ class TestResourceTemplate:
             return f"Weather in {city} ({units})"
 
         template = ResourceTemplate.from_function(
-            func=weather,
+            fn=weather,
             uri_template="weather://{city}/current",
             name="weather",
             description="Get current weather",
@@ -29,7 +29,7 @@ class TestResourceTemplate:
             ValueError, match="You must provide a name for lambda functions"
         ):
             ResourceTemplate.from_function(
-                func=lambda x: x,
+                fn=lambda x: x,
                 uri_template="test://{x}",
             )
 
@@ -40,7 +40,7 @@ class TestResourceTemplate:
             return x
 
         template = ResourceTemplate.from_function(
-            func=dummy,
+            fn=dummy,
             uri_template="test://{x}/value",
             name="test",
         )
@@ -60,7 +60,7 @@ class TestResourceTemplate:
             return f"Hello, {name}!"
 
         template = ResourceTemplate.from_function(
-            func=greet,
+            fn=greet,
             uri_template="greet://{name}",
             name="greeter",
         )
@@ -81,7 +81,7 @@ class TestResourceTemplate:
             return value.encode()
 
         template = ResourceTemplate.from_function(
-            func=get_bytes,
+            fn=get_bytes,
             uri_template="bytes://{value}",
             name="bytes",
         )
@@ -102,7 +102,7 @@ class TestResourceTemplate:
             return {"key": key, "value": 123}
 
         template = ResourceTemplate.from_function(
-            func=get_data,
+            fn=get_data,
             uri_template="data://{key}",
             name="data",
         )
@@ -124,7 +124,7 @@ class TestResourceTemplate:
             raise ValueError("Test error")
 
         template = ResourceTemplate.from_function(
-            func=failing_func,
+            fn=failing_func,
             uri_template="fail://{x}",
             name="fail",
         )
@@ -139,7 +139,7 @@ class TestResourceTemplate:
             return f"Hello, {name}!"
 
         template = ResourceTemplate.from_function(
-            func=greet,
+            fn=greet,
             uri_template="greet://{name}",
             name="greeter",
         )
@@ -160,7 +160,7 @@ class TestResourceTemplate:
             return value.encode()
 
         template = ResourceTemplate.from_function(
-            func=get_bytes,
+            fn=get_bytes,
             uri_template="bytes://{value}",
             name="bytes",
         )
@@ -181,7 +181,7 @@ class TestResourceTemplate:
             return {"key": key, "value": 123}
 
         template = ResourceTemplate.from_function(
-            func=get_data,
+            fn=get_data,
             uri_template="data://{key}",
             name="data",
         )
@@ -203,7 +203,7 @@ class TestResourceTemplate:
             raise ValueError("Test error")
 
         template = ResourceTemplate.from_function(
-            func=failing_func,
+            fn=failing_func,
             uri_template="fail://{x}",
             name="fail",
         )
@@ -223,7 +223,7 @@ class TestResourceTemplate:
             return async_helper(name)  # Returns coroutine
 
         template = ResourceTemplate.from_function(
-            func=get_greeting,
+            fn=get_greeting,
             uri_template="greet://{name}",
             name="greeter",
         )

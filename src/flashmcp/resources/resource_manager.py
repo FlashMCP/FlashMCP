@@ -19,9 +19,35 @@ class ResourceManager:
         self._templates: Dict[str, ResourceTemplate] = {}
         self.warn_on_duplicate_resources = warn_on_duplicate_resources
 
+    def add_resource(self, resource: Resource) -> Resource:
+        """Add a resource to the manager.
+
+        Args:
+            resource: A Resource instance to add
+
+        Returns:
+            The added resource. If a resource with the same URI already exists,
+            returns the existing resource.
+        """
+        logger.debug(
+            "Adding resource",
+            extra={
+                "uri": resource.uri,
+                "type": type(resource).__name__,
+                "name": resource.name,
+            },
+        )
+        existing = self._resources.get(str(resource.uri))
+        if existing:
+            if self.warn_on_duplicate_resources:
+                logger.warning(f"Resource already exists: {resource.uri}")
+            return existing
+        self._resources[str(resource.uri)] = resource
+        return resource
+
     def add_template(
         self,
-        func: Callable,
+        fn: Callable,
         uri_template: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
@@ -29,7 +55,7 @@ class ResourceManager:
     ) -> ResourceTemplate:
         """Add a template from a function."""
         template = ResourceTemplate.from_function(
-            func,
+            fn,
             uri_template=uri_template,
             name=name,
             description=description,
@@ -66,29 +92,3 @@ class ResourceManager:
         """List all registered templates."""
         logger.debug("Listing templates", extra={"count": len(self._templates)})
         return list(self._templates.values())
-
-    def add_resource(self, resource: Resource) -> Resource:
-        """Add a resource to the manager.
-
-        Args:
-            resource: A Resource instance to add
-
-        Returns:
-            The added resource. If a resource with the same URI already exists,
-            returns the existing resource.
-        """
-        logger.debug(
-            "Adding resource",
-            extra={
-                "uri": resource.uri,
-                "type": type(resource).__name__,
-                "name": resource.name,
-            },
-        )
-        existing = self._resources.get(str(resource.uri))
-        if existing:
-            if self.warn_on_duplicate_resources:
-                logger.warning(f"Resource already exists: {resource.uri}")
-            return existing
-        self._resources[str(resource.uri)] = resource
-        return resource

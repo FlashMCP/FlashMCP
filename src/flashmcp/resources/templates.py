@@ -20,35 +20,35 @@ class ResourceTemplate(BaseModel):
     mime_type: str = Field(
         default="text/plain", description="MIME type of the resource content"
     )
-    func: Callable = Field(exclude=True)
+    fn: Callable = Field(exclude=True)
     parameters: dict = Field(description="JSON schema for function parameters")
 
     @classmethod
     def from_function(
         cls,
-        func: Callable,
+        fn: Callable,
         uri_template: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
         mime_type: Optional[str] = None,
     ) -> "ResourceTemplate":
         """Create a template from a function."""
-        func_name = name or func.__name__
+        func_name = name or fn.__name__
         if func_name == "<lambda>":
             raise ValueError("You must provide a name for lambda functions")
 
         # Get schema from TypeAdapter - will fail if function isn't properly typed
-        parameters = TypeAdapter(func).json_schema()
+        parameters = TypeAdapter(fn).json_schema()
 
         # ensure the arguments are properly cast
-        func = validate_call(func)
+        fn = validate_call(fn)
 
         return cls(
             uri_template=uri_template,
             name=func_name,
-            description=description or func.__doc__ or "",
+            description=description or fn.__doc__ or "",
             mime_type=mime_type or "text/plain",
-            func=func,
+            fn=fn,
             parameters=parameters,
         )
 
@@ -65,7 +65,7 @@ class ResourceTemplate(BaseModel):
         """Create a resource from the template with the given parameters."""
         try:
             # Call function and check if result is a coroutine
-            result = self.func(**params)
+            result = self.fn(**params)
             if inspect.iscoroutine(result):
                 result = await result
 
@@ -74,7 +74,7 @@ class ResourceTemplate(BaseModel):
                 name=self.name,
                 description=self.description,
                 mime_type=self.mime_type,
-                func=lambda: result,  # Capture result in closure
+                fn=lambda: result,  # Capture result in closure
             )
         except Exception as e:
             raise ValueError(f"Error creating resource from template: {e}")

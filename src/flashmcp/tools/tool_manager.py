@@ -30,12 +30,12 @@ class ToolManager:
 
     def add_tool(
         self,
-        func: Callable,
+        fn: Callable,
         name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> Tool:
         """Add a tool to the server."""
-        tool = Tool.from_function(func, name=name, description=description)
+        tool = Tool.from_function(fn, name=name, description=description)
         existing = self._tools.get(tool.name)
         if existing:
             if self.warn_on_duplicate_tools:
