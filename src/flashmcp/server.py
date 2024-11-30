@@ -1,5 +1,6 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
+import asyncio
 import base64
 import functools
 import json
@@ -12,12 +13,11 @@ from mcp.types import Resource as MCPResource
 from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
-
+from pydantic.networks import _BaseUrl
 from .exceptions import ResourceError
 from .resources import Resource, FunctionResource, ResourceManager
 from .tools import ToolManager
 from .utilities.logging import get_logger, configure_logging
-from pydantic.networks import _BaseUrl
 
 logger = get_logger(__name__)
 
@@ -67,9 +67,18 @@ class FlashMCP:
     def name(self) -> str:
         return self._mcp_server.name
 
-    async def run(self, *args, **kwargs) -> None:
-        """Run the FlashMCP server."""
-        await self._mcp_server.run(*args, **kwargs)
+    def run(self, transport: Literal["stdio", "sse"] = "stdio") -> None:
+        """Run the FlashMCP server. Note this is a synchronous function.
+
+        Args:
+            transport: Transport protocol to use ("stdio" or "sse")
+        """
+        if transport == "stdio":
+            asyncio.run(self.run_stdio_async())
+        elif transport == "sse":
+            asyncio.run(self.run_sse_async())
+        else:
+            raise ValueError(f"Unknown transport: {transport}")
 
     def _setup_handlers(self) -> None:
         """Set up core MCP protocol handlers."""
@@ -220,21 +229,16 @@ class FlashMCP:
 
         return decorator
 
-    @classmethod
-    async def run_stdio(cls, app: "FlashMCP") -> None:
+    async def run_stdio_async(self) -> None:
         """Run the server using stdio transport."""
         async with stdio_server() as (read_stream, write_stream):
-            await app.run(
+            await self._mcp_server.run(
                 read_stream,
                 write_stream,
-                app._mcp_server.create_initialization_options(),
+                self._mcp_server.create_initialization_options(),
             )
 
-    @classmethod
-    async def run_sse(
-        cls,
-        app: "FlashMCP",
-    ) -> None:
+    async def run_sse_async(self) -> None:
         """Run the server using SSE transport."""
         from starlette.applications import Starlette
         from starlette.routing import Route
@@ -246,17 +250,17 @@ class FlashMCP:
             async with sse.connect_sse(
                 request.scope, request.receive, request._send
             ) as streams:
-                await app.run(
+                await self._mcp_server.run(
                     streams[0],
                     streams[1],
-                    app._mcp_server.create_initialization_options(),
+                    self._mcp_server.create_initialization_options(),
                 )
 
         async def handle_messages(request):
             await sse.handle_post_message(request.scope, request.receive, request._send)
 
         starlette_app = Starlette(
-            debug=app.settings.debug,
+            debug=self.settings.debug,
             routes=[
                 Route("/sse", endpoint=handle_sse),
                 Route("/messages", endpoint=handle_messages, methods=["POST"]),
@@ -265,7 +269,7 @@ class FlashMCP:
 
         uvicorn.run(
             starlette_app,
-            host=app.settings.host,
-            port=app.settings.port,
-            log_level=app.settings.log_level,
+            host=self.settings.host,
+            port=self.settings.port,
+            log_level=self.settings.log_level,
         )
