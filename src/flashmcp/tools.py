@@ -1,63 +1,14 @@
 """Tool management for FlashMCP."""
 
-import base64
 import inspect
-from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional
 
-from mcp.types import ImageContent
 from pydantic import BaseModel, Field, TypeAdapter, validate_call
 
 from .exceptions import ToolError
 from .utilities.logging import get_logger
 
 logger = get_logger(__name__)
-
-
-class Image:
-    """Helper class for returning images from tools."""
-
-    def __init__(
-        self,
-        path: Optional[Union[str, Path]] = None,
-        data: Optional[bytes] = None,
-        format: Optional[str] = None,
-    ):
-        if path is None and data is None:
-            raise ValueError("Either path or data must be provided")
-        if path is not None and data is not None:
-            raise ValueError("Only one of path or data can be provided")
-
-        self.path = Path(path) if path else None
-        self.data = data
-        self._format = format
-        self._mime_type = self._get_mime_type()
-
-    def _get_mime_type(self) -> str:
-        """Get MIME type from format or guess from file extension."""
-        if self._format:
-            return f"image/{self._format.lower()}"
-
-        if self.path:
-            suffix = self.path.suffix.lower()
-            return {
-                ".png": "image/png",
-                ".jpg": "image/jpeg",
-                ".jpeg": "image/jpeg",
-                ".gif": "image/gif",
-                ".webp": "image/webp",
-            }.get(suffix, "application/octet-stream")
-        return "image/png"  # default for raw binary data
-
-    def to_image_content(self) -> ImageContent:
-        """Convert to MCP ImageContent."""
-        if self.path:
-            with open(self.path, "rb") as f:
-                data = base64.b64encode(f.read()).decode()
-        else:
-            data = base64.b64encode(self.data).decode()
-
-        return ImageContent(type="image", data=data, mimeType=self._mime_type)
 
 
 class Tool(BaseModel):
