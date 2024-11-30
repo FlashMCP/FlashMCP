@@ -71,7 +71,7 @@ class Tool(BaseModel):
         """Run the tool with arguments."""
         try:
             # Inject context if needed
-            if self.context_kwarg and context:
+            if self.context_kwarg:
                 arguments[self.context_kwarg] = context
 
             # Call function with proper async handling
