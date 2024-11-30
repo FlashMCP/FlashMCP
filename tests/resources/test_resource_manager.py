@@ -99,7 +99,7 @@ class TestResourceManager:
             return f"Hello, {name}!"
 
         template = ResourceTemplate.from_function(
-            func=greet,
+            fn=greet,
             uri_template="greet://{name}",
             name="greeter",
         )

@@ -205,7 +205,7 @@ class TestServerResources:
         def get_text():
             return "Hello, world!"
 
-        resource = FunctionResource(uri="resource://test", name="test", func=get_text)
+        resource = FunctionResource(uri="resource://test", name="test", fn=get_text)
         mcp.add_resource(resource)
 
         async with client_session(mcp._mcp_server) as client:
@@ -221,7 +221,7 @@ class TestServerResources:
         resource = FunctionResource(
             uri="resource://binary",
             name="binary",
-            func=get_binary,
+            fn=get_binary,
             is_binary=True,
             mime_type="application/octet-stream",
         )

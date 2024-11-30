@@ -46,12 +46,12 @@ class FunctionResource(Resource):
     - other types will be converted to JSON
     """
 
-    func: Callable[[], Any] = Field(exclude=True)
+    fn: Callable[[], Any] = Field(exclude=True)
 
     async def read(self) -> Union[str, bytes]:
         """Read the resource by calling the wrapped function."""
         try:
-            result = self.func()
+            result = self.fn()
             if isinstance(result, Resource):
                 return await result.read()
             if isinstance(result, bytes):

@@ -16,13 +16,13 @@ class TestFunctionResource:
             uri="fn://test",
             name="test",
             description="test function",
-            func=my_func,
+            fn=my_func,
         )
         assert str(resource.uri) == "fn://test"
         assert resource.name == "test"
         assert resource.description == "test function"
         assert resource.mime_type == "text/plain"  # default
-        assert resource.func == my_func
+        assert resource.fn == my_func
 
     async def test_read_text(self):
         """Test reading text from a FunctionResource."""
@@ -33,7 +33,7 @@ class TestFunctionResource:
         resource = FunctionResource(
             uri="function://test",
             name="test",
-            func=get_data,
+            fn=get_data,
         )
         content = await resource.read()
         assert content == "Hello, world!"
@@ -48,7 +48,7 @@ class TestFunctionResource:
         resource = FunctionResource(
             uri="function://test",
             name="test",
-            func=get_data,
+            fn=get_data,
         )
         content = await resource.read()
         assert content == b"Hello, world!"
@@ -62,7 +62,7 @@ class TestFunctionResource:
         resource = FunctionResource(
             uri="function://test",
             name="test",
-            func=get_data,
+            fn=get_data,
         )
         content = await resource.read()
         assert '"key": "value"' in content
@@ -76,7 +76,7 @@ class TestFunctionResource:
         resource = FunctionResource(
             uri="function://test",
             name="test",
-            func=failing_func,
+            fn=failing_func,
         )
         with pytest.raises(ValueError, match="Error reading resource function://test"):
             await resource.read()
@@ -90,7 +90,7 @@ class TestFunctionResource:
         resource = FunctionResource(
             uri="function://test",
             name="test",
-            func=lambda: MyModel(name="test"),
+            fn=lambda: MyModel(name="test"),
         )
         content = await resource.read()
         assert content == '{"name": "test"}'
@@ -108,7 +108,7 @@ class TestFunctionResource:
         resource = FunctionResource(
             uri="function://test",
             name="test",
-            func=get_data,
+            fn=get_data,
         )
         content = await resource.read()
         assert isinstance(content, str)

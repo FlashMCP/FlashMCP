@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class Tool(BaseModel):
     """Internal tool registration info."""
 
-    func: Callable = Field(exclude=True)
+    fn: Callable = Field(exclude=True)
     name: str = Field(description="Name of the tool")
     description: str = Field(description="Description of what the tool does")
     parameters: dict = Field(description="JSON schema for tool parameters")
@@ -27,36 +27,36 @@ class Tool(BaseModel):
     @classmethod
     def from_function(
         cls,
-        func: Callable,
+        fn: Callable,
         name: Optional[str] = None,
         description: Optional[str] = None,
         context_kwarg: Optional[str] = None,
     ) -> "Tool":
         """Create a Tool from a function."""
-        func_name = name or func.__name__
+        func_name = name or fn.__name__
 
         if func_name == "<lambda>":
             raise ValueError("You must provide a name for lambda functions")
 
-        func_doc = description or func.__doc__ or ""
-        is_async = inspect.iscoroutinefunction(func)
+        func_doc = description or fn.__doc__ or ""
+        is_async = inspect.iscoroutinefunction(fn)
 
         # Get schema from TypeAdapter - will fail if function isn't properly typed
-        parameters = TypeAdapter(func).json_schema()
+        parameters = TypeAdapter(fn).json_schema()
 
         # Find context parameter if it exists
         if context_kwarg is None:
-            sig = inspect.signature(func)
+            sig = inspect.signature(fn)
             for param_name, param in sig.parameters.items():
                 if param.annotation is FlashMCP.Context:
                     context_kwarg = param_name
                     break
 
         # ensure the arguments are properly cast
-        func = validate_call(func)
+        fn = validate_call(fn)
 
         return cls(
-            func=func,
+            fn=fn,
             name=func_name,
             description=func_doc,
             parameters=parameters,
@@ -73,7 +73,7 @@ class Tool(BaseModel):
 
             # Call function with proper async handling
             if self.is_async:
-                return await self.func(**arguments)
-            return self.func(**arguments)
+                return await self.fn(**arguments)
+            return self.fn(**arguments)
         except Exception as e:
             raise ToolError(f"Error executing tool {self.name}: {e}") from e

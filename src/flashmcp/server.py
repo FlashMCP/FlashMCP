@@ -188,7 +188,7 @@ class FlashMCP:
 
     def add_tool(
         self,
-        func: Callable,
+        fn: Callable,
         name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> None:
@@ -198,11 +198,11 @@ class FlashMCP:
         with the Context type annotation. See the @tool decorator for examples.
 
         Args:
-            func: The function to register as a tool
+            fn: The function to register as a tool
             name: Optional name for the tool (defaults to function name)
             description: Optional description of what the tool does
         """
-        self._tool_manager.add_tool(func, name=name, description=description)
+        self._tool_manager.add_tool(fn, name=name, description=description)
 
     def tool(
         self, name: Optional[str] = None, description: Optional[str] = None
@@ -238,9 +238,9 @@ class FlashMCP:
                 "Did you forget to call it? Use @tool() instead of @tool"
             )
 
-        def decorator(func: Callable) -> Callable:
-            self.add_tool(func, name=name, description=description)
-            return func
+        def decorator(fn: Callable) -> Callable:
+            self.add_tool(fn, name=name, description=description)
+            return fn
 
         return decorator
 
@@ -293,19 +293,19 @@ class FlashMCP:
                 "Did you forget to call it? Use @resource('uri') instead of @resource"
             )
 
-        def decorator(func: Callable) -> Callable:
-            @functools.wraps(func)
+        def decorator(fn: Callable) -> Callable:
+            @functools.wraps(fn)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
-                return func(*args, **kwargs)
+                return fn(*args, **kwargs)
 
             # Check if this should be a template
             has_uri_params = "{" in uri and "}" in uri
-            has_func_params = bool(inspect.signature(func).parameters)
+            has_func_params = bool(inspect.signature(fn).parameters)
 
             if has_uri_params or has_func_params:
                 # Validate that URI params match function params
                 uri_params = set(re.findall(r"{(\w+)}", uri))
-                func_params = set(inspect.signature(func).parameters.keys())
+                func_params = set(inspect.signature(fn).parameters.keys())
 
                 if uri_params != func_params:
                     raise ValueError(
@@ -328,7 +328,7 @@ class FlashMCP:
                     name=name,
                     description=description,
                     mime_type=mime_type or "text/plain",
-                    func=wrapper,
+                    fn=wrapper,
                 )
                 self.add_resource(resource)
             return wrapper

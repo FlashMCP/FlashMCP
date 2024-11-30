@@ -15,7 +15,7 @@ class TestResourceValidation:
         resource = FunctionResource(
             uri="http://example.com/data",
             name="test",
-            func=dummy_func,
+            fn=dummy_func,
         )
         assert str(resource.uri) == "http://example.com/data"
 
@@ -24,7 +24,7 @@ class TestResourceValidation:
             FunctionResource(
                 uri="invalid",
                 name="test",
-                func=dummy_func,
+                fn=dummy_func,
             )
 
         # Missing host
@@ -32,7 +32,7 @@ class TestResourceValidation:
             FunctionResource(
                 uri="http://",
                 name="test",
-                func=dummy_func,
+                fn=dummy_func,
             )
 
     def test_resource_name_from_uri(self):
@@ -43,7 +43,7 @@ class TestResourceValidation:
 
         resource = FunctionResource(
             uri="resource://my-resource",
-            func=dummy_func,
+            fn=dummy_func,
         )
         assert resource.name == "my-resource"
 
@@ -56,14 +56,14 @@ class TestResourceValidation:
         # Must provide either name or URI
         with pytest.raises(ValueError, match="Either name or uri must be provided"):
             FunctionResource(
-                func=dummy_func,
+                fn=dummy_func,
             )
 
         # Explicit name takes precedence over URI
         resource = FunctionResource(
             uri="resource://uri-name",
             name="explicit-name",
-            func=dummy_func,
+            fn=dummy_func,
         )
         assert resource.name == "explicit-name"
 
@@ -76,14 +76,14 @@ class TestResourceValidation:
         # Default mime type
         resource = FunctionResource(
             uri="resource://test",
-            func=dummy_func,
+            fn=dummy_func,
         )
         assert resource.mime_type == "text/plain"
 
         # Custom mime type
         resource = FunctionResource(
             uri="resource://test",
-            func=dummy_func,
+            fn=dummy_func,
             mime_type="application/json",
         )
         assert resource.mime_type == "application/json"
