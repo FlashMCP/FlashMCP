@@ -3,7 +3,14 @@ import pytest
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-from FlashMCP.resources import FileResource, FunctionResource, ResourceManager
+from FlashMCP.resources import (
+    FileResource,
+    FunctionResource,
+    ResourceManager,
+    TextResource,
+    BinaryResource,
+    ResourceTemplate,
+)
 
 
 @pytest.fixture
@@ -240,3 +247,212 @@ class TestResourceManagerList:
         assert resources[0] == added1
         assert resources[1] == added2
         assert added1 != added2
+
+
+class TestTextResource:
+    """Test TextResource functionality."""
+
+    async def test_text_resource_read(self):
+        """Test reading from a TextResource."""
+        resource = TextResource(
+            uri="text://test",
+            name="test",
+            text="Hello, world!",
+        )
+        content = await resource.read()
+        assert content == "Hello, world!"
+        assert resource.mime_type == "text/plain"
+
+    def test_text_resource_custom_mime(self):
+        """Test TextResource with custom mime type."""
+        resource = TextResource(
+            uri="text://test",
+            name="test",
+            text="<html></html>",
+            mime_type="text/html",
+        )
+        assert resource.mime_type == "text/html"
+
+
+class TestBinaryResource:
+    """Test BinaryResource functionality."""
+
+    async def test_binary_resource_read(self):
+        """Test reading from a BinaryResource."""
+        data = b"Hello, world!"
+        resource = BinaryResource(
+            uri="binary://test",
+            name="test",
+            data=data,
+        )
+        content = await resource.read()
+        assert content == data
+        assert resource.mime_type == "application/octet-stream"
+
+    def test_binary_resource_custom_mime(self):
+        """Test BinaryResource with custom mime type."""
+        resource = BinaryResource(
+            uri="binary://test",
+            name="test",
+            data=b"test",
+            mime_type="image/png",
+        )
+        assert resource.mime_type == "image/png"
+
+
+class TestResourceTemplate:
+    """Test ResourceTemplate functionality."""
+
+    def test_template_from_function(self):
+        """Test creating a template from a function."""
+
+        def weather(city: str, units: str = "metric") -> str:
+            return f"Weather in {city} ({units})"
+
+        template = ResourceTemplate.from_function(
+            func=weather,
+            uri_template="weather://{city}/current",
+            name="weather",
+            description="Get current weather",
+            mime_type="text/plain",
+        )
+
+        assert template.name == "weather"
+        assert template.uri_template == "weather://{city}/current"
+        assert template.mime_type == "text/plain"
+        assert "city" in template.parameters["properties"]
+
+    def test_template_from_lambda_error(self):
+        """Test error when creating template from lambda without name."""
+        with pytest.raises(
+            ValueError, match="You must provide a name for lambda functions"
+        ):
+            ResourceTemplate.from_function(
+                func=lambda x: x,
+                uri_template="test://{x}",
+            )
+
+    def test_template_matches(self):
+        """Test URI matching against template."""
+
+        def dummy(x: str) -> str:
+            return x
+
+        template = ResourceTemplate.from_function(
+            func=dummy,
+            uri_template="test://{x}/value",
+            name="test",
+        )
+
+        # Test matching URI
+        params = template.matches("test://hello/value")
+        assert params == {"x": "hello"}
+
+        # Test non-matching URI
+        params = template.matches("test://hello/wrong")
+        assert params is None
+
+    async def test_template_create_text_resource(self):
+        """Test creating a TextResource from template."""
+
+        def greet(name: str) -> str:
+            return f"Hello, {name}!"
+
+        template = ResourceTemplate.from_function(
+            func=greet,
+            uri_template="greet://{name}",
+            name="greeter",
+        )
+
+        resource = await template.create_resource(
+            "greet://world",
+            {"name": "world"},
+        )
+
+        assert isinstance(resource, TextResource)
+        content = await resource.read()
+        assert content == "Hello, world!"
+
+    async def test_template_create_binary_resource(self):
+        """Test creating a BinaryResource from template."""
+
+        def get_bytes(value: str) -> bytes:
+            return value.encode()
+
+        template = ResourceTemplate.from_function(
+            func=get_bytes,
+            uri_template="bytes://{value}",
+            name="bytes",
+            mime_type="application/octet-stream",
+        )
+
+        resource = await template.create_resource(
+            "bytes://test",
+            {"value": "test"},
+        )
+
+        assert isinstance(resource, BinaryResource)
+        content = await resource.read()
+        assert content == b"test"
+
+    async def test_template_json_conversion(self):
+        """Test automatic JSON conversion of non-string/bytes results."""
+
+        def get_data(key: str) -> dict:
+            return {"key": key, "value": 123}
+
+        template = ResourceTemplate.from_function(
+            func=get_data,
+            uri_template="data://{key}",
+            name="data",
+        )
+
+        resource = await template.create_resource(
+            "data://test",
+            {"key": "test"},
+        )
+
+        assert isinstance(resource, TextResource)
+        content = await resource.read()
+        assert '"key": "test"' in content
+        assert '"value": 123' in content
+
+
+class TestResourceManagerWithTemplates:
+    """Test ResourceManager template functionality."""
+
+    async def test_get_resource_from_template(self):
+        """Test getting a resource through a template."""
+        manager = ResourceManager()
+
+        def greet(name: str) -> str:
+            return f"Hello, {name}!"
+
+        template = ResourceTemplate.from_function(
+            func=greet,
+            uri_template="greet://{name}",
+            name="greeter",
+        )
+        manager._templates[template.uri_template] = template
+
+        resource = await manager.get_resource("greet://world")
+        assert isinstance(resource, TextResource)
+        content = await resource.read()
+        assert content == "Hello, world!"
+
+    async def test_template_error_handling(self):
+        """Test error handling in template resource creation."""
+        manager = ResourceManager()
+
+        def failing_func(x: str) -> str:
+            raise ValueError("Test error")
+
+        template = ResourceTemplate.from_function(
+            func=failing_func,
+            uri_template="fail://{x}",
+            name="fail",
+        )
+        manager._templates[template.uri_template] = template
+
+        with pytest.raises(ValueError, match="Error creating resource from template"):
+            await manager.get_resource("fail://test")

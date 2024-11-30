@@ -228,6 +228,50 @@ class FlashMCP:
 
         return decorator
 
+    def template(
+        self,
+        uri_template: str,
+        *,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        mime_type: Optional[str] = None,
+    ) -> Callable:
+        """Decorator to register a function as a resource template.
+
+        Args:
+            uri_template: URI template with parameters (e.g. "weather://{city}/current")
+            name: Optional name for the resource
+            description: Optional description of the resource
+            mime_type: Optional MIME type for the resource
+
+        Example:
+            @server.template("weather://{city}/current")
+            def get_weather(city: str) -> str:
+                return f"Weather for {city}"
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(uri_template):
+            raise TypeError(
+                "The @template decorator was used incorrectly. "
+                "Did you forget to call it? Use @template('uri_template') instead of @template"
+            )
+
+        def decorator(func: Callable) -> Callable:
+            @functools.wraps(func)
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
+                return func(*args, **kwargs)
+
+            self._resource_manager.add_template(
+                wrapper,
+                uri_template=uri_template,
+                name=name,
+                description=description,
+                mime_type=mime_type or "text/plain",
+            )
+            return wrapper
+
+        return decorator
+
     async def run_stdio_async(self) -> None:
         """Run the server using stdio transport."""
         async with stdio_server() as (read_stream, write_stream):
