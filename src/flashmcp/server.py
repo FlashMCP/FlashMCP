@@ -24,8 +24,9 @@ from pydantic.networks import _BaseUrl
 from FlashMCP.exceptions import ResourceError
 from FlashMCP.resources import Resource, ResourceManager
 from FlashMCP.resources.types import FunctionResource
-from FlashMCP.tools import ToolManager, Image
+from FlashMCP.tools import ToolManager
 from FlashMCP.utilities.logging import get_logger, configure_logging
+from FlashMCP.utilities.types import Image
 
 logger = get_logger(__name__)
 

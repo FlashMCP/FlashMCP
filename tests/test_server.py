@@ -3,7 +3,7 @@ from mcp.shared.memory import (
 )
 from FlashMCP import FlashMCP
 from FlashMCP.resources import FileResource, FunctionResource
-from FlashMCP.tools import Image
+from FlashMCP.utilities.types import Image
 from mcp.types import TextContent, ImageContent
 import pytest
 from pydantic import BaseModel
