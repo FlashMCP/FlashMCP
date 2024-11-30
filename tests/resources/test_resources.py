@@ -1,5 +1,6 @@
 import pytest
-from FlashMCP.resources import Resource, FunctionResource
+
+from FlashMCP.resources import FunctionResource, Resource
 
 
 class TestResourceValidation:
@@ -95,4 +96,4 @@ class TestResourceValidation:
             pass
 
         with pytest.raises(TypeError, match="abstract method"):
-            ConcreteResource(uri="test://test", name="test")
+            ConcreteResource(uri="test://test", name="test")  # type: ignore

@@ -37,7 +37,7 @@ class TestServer:
 
         with pytest.raises(TypeError, match="The @tool decorator was used incorrectly"):
 
-            @mcp.tool  # Missing parentheses
+            @mcp.tool  # Missing parentheses #type: ignore
             def add(x: int, y: int) -> int:
                 return x + y
 
@@ -57,7 +57,7 @@ class TestServer:
             TypeError, match="The @resource decorator was used incorrectly"
         ):
 
-            @mcp.resource  # Missing parentheses
+            @mcp.resource  # Missing parentheses #type: ignore
             def get_data(x: str) -> str:
                 return f"Data: {x}"
 

@@ -13,6 +13,7 @@ from pydantic import (
     ValidationInfo,
     field_validator,
 )
+from pydantic.networks import _BaseUrl  # TODO: remove this once pydantic is updated
 
 
 def maybe_cast_str_to_any_url(x) -> AnyUrl:
@@ -27,7 +28,7 @@ def maybe_cast_str_to_any_url(x) -> AnyUrl:
     raise ValueError(f"Expected str or AnyUrl, got {type(x)}")
 
 
-LaxAnyUrl = Annotated[AnyUrl, BeforeValidator(maybe_cast_str_to_any_url)]
+LaxAnyUrl = Annotated[_BaseUrl | str, BeforeValidator(maybe_cast_str_to_any_url)]
 
 
 class Resource(BaseModel, abc.ABC):
@@ -35,7 +36,7 @@ class Resource(BaseModel, abc.ABC):
 
     model_config = ConfigDict(validate_default=True)
 
-    uri: LaxAnyUrl = Field(description="URI of the resource")
+    uri: LaxAnyUrl = Field(default=..., description="URI of the resource")
     name: str | None = Field(description="Name of the resource", default=None)
     description: str | None = Field(
         description="Description of the resource", default=None
