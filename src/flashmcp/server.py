@@ -111,7 +111,7 @@ class FlashMCP:
         """Call a tool by name with arguments."""
         try:
             result = await self._tool_manager.call_tool(name, arguments)
-            return self._convert_to_content(result)
+            return _convert_to_content(result)
         except Exception as e:
             logger.error(f"Error calling tool {name}: {e}")
             return [
@@ -147,51 +147,6 @@ class FlashMCP:
         except Exception as e:
             logger.error(f"Error reading resource {uri}: {e}")
             raise ResourceError(str(e))
-
-    def _convert_to_content(
-        self, value: Any
-    ) -> Sequence[Union[TextContent, ImageContent]]:
-        """Convert a tool result to MCP content types."""
-
-        # Already a sequence of valid content types
-        if isinstance(value, (list, tuple)):
-            if all(isinstance(x, (TextContent, ImageContent)) for x in value):
-                return value
-            # Handle mixed content including Image objects
-            result = []
-            for item in value:
-                if isinstance(item, (TextContent, ImageContent)):
-                    result.append(item)
-                elif isinstance(item, Image):
-                    result.append(item.to_image_content())
-                else:
-                    result.append(
-                        TextContent(
-                            type="text",
-                            text=json.dumps(
-                                item, indent=2, default=pydantic.json.pydantic_encoder
-                            ),
-                        )
-                    )
-            return result
-
-        # Single content type
-        if isinstance(value, (TextContent, ImageContent)):
-            return [value]
-
-        # Image helper
-        if isinstance(value, Image):
-            return [value.to_image_content()]
-
-        # All other types - convert to JSON string with pydantic encoder
-        return [
-            TextContent(
-                type="text",
-                text=json.dumps(
-                    value, indent=2, default=pydantic.json.pydantic_encoder
-                ),
-            )
-        ]
 
     def add_tool(
         self,
@@ -318,3 +273,43 @@ class FlashMCP:
             port=self.settings.port,
             log_level=self.settings.log_level,
         )
+
+
+def _convert_to_content(value: Any) -> Sequence[Union[TextContent, ImageContent]]:
+    """Convert a tool result to MCP content types."""
+
+    # Already a sequence of valid content types
+    if isinstance(value, (list, tuple)):
+        if all(isinstance(x, (TextContent, ImageContent)) for x in value):
+            return value
+        # Handle mixed content including Image objects
+        result = []
+        for item in value:
+            if isinstance(item, (TextContent, ImageContent)):
+                result.append(item)
+            elif isinstance(item, Image):
+                result.append(item.to_image_content())
+            else:
+                result.append(
+                    TextContent(
+                        type="text",
+                        text=json.dumps(item, default=pydantic.json.pydantic_encoder),
+                    )
+                )
+        return result
+
+    # Single content type
+    if isinstance(value, (TextContent, ImageContent)):
+        return [value]
+
+    # Image helper
+    if isinstance(value, Image):
+        return [value.to_image_content()]
+
+    # All other types - convert to JSON string with pydantic encoder
+    return [
+        TextContent(
+            type="text",
+            text=json.dumps(value, indent=2, default=pydantic.json.pydantic_encoder),
+        )
+    ]
