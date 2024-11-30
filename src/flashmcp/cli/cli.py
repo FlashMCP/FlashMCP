@@ -25,16 +25,16 @@ app = typer.Typer(
 
 def _build_uv_command(
     file: Path,
-    uv_directory: Optional[Path] = None,
+    with_editable: Optional[Path] = None,
     with_packages: Optional[list[str]] = None,
 ) -> list[str]:
     """Build the uv run command."""
     cmd = ["uv"]
 
-    if uv_directory:
-        cmd.extend(["--directory", str(uv_directory)])
-
     cmd.extend(["run", "--with", "FlashMCP"])
+
+    if with_editable:
+        cmd.extend(["--with-editable", str(with_editable)])
 
     if with_packages:
         for pkg in with_packages:
@@ -145,12 +145,12 @@ def dev(
         ...,
         help="Python file to run, optionally with :object suffix",
     ),
-    uv_directory: Annotated[
+    with_editable: Annotated[
         Optional[Path],
         typer.Option(
-            "--uv-directory",
-            "-d",
-            help="Directory containing pyproject.toml (defaults to current directory)",
+            "--with-editable",
+            "-e",
+            help="Directory containing pyproject.toml to install in editable mode",
             exists=True,
             file_okay=False,
             resolve_path=True,
@@ -172,13 +172,13 @@ def dev(
         extra={
             "file": str(file),
             "server_object": server_object,
-            "uv_directory": str(uv_directory) if uv_directory else None,
+            "with_editable": str(with_editable) if with_editable else None,
             "with_packages": with_packages,
         },
     )
 
     try:
-        uv_cmd = _build_uv_command(file, uv_directory, with_packages)
+        uv_cmd = _build_uv_command(file, with_editable, with_packages)
         # Run the MCP Inspector command
         process = subprocess.run(
             ["npx", "@modelcontextprotocol/inspector"] + uv_cmd,
@@ -217,12 +217,12 @@ def run(
             help="Transport protocol to use (stdio or sse)",
         ),
     ] = None,
-    uv_directory: Annotated[
+    with_editable: Annotated[
         Optional[Path],
         typer.Option(
-            "--uv-directory",
-            "-d",
-            help="Directory containing pyproject.toml (defaults to current directory)",
+            "--with-editable",
+            "-e",
+            help="Directory containing pyproject.toml to install in editable mode",
             exists=True,
             file_okay=False,
             resolve_path=True,
@@ -238,7 +238,7 @@ def run(
             "file": str(file),
             "server_object": server_object,
             "transport": transport,
-            "uv_directory": str(uv_directory) if uv_directory else None,
+            "with_editable": str(with_editable) if with_editable else None,
         },
     )
 
@@ -278,17 +278,32 @@ def install(
             help="Custom name for the server (defaults to file name)",
         ),
     ] = None,
-    uv_directory: Annotated[
+    with_editable: Annotated[
         Optional[Path],
         typer.Option(
-            "--uv-directory",
-            "-d",
-            help="Directory containing pyproject.toml (defaults to current directory)",
+            "--with-editable",
+            "-e",
+            help="Directory containing pyproject.toml to install in editable mode",
             exists=True,
             file_okay=False,
             resolve_path=True,
         ),
     ] = None,
+    with_packages: Annotated[
+        list[str],
+        typer.Option(
+            "--with",
+            help="Additional packages to install",
+        ),
+    ] = [],
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            "-f",
+            help="Replace existing server if one exists with the same name",
+        ),
+    ] = False,
 ) -> None:
     """Install a FlashMCP server in the Claude desktop app."""
     file, server_object = _parse_file_path(file_spec)
@@ -299,7 +314,9 @@ def install(
             "file": str(file),
             "server_name": server_name,
             "server_object": server_object,
-            "uv_directory": str(uv_directory) if uv_directory else None,
+            "with_editable": str(with_editable) if with_editable else None,
+            "with_packages": with_packages,
+            "force": force,
         },
     )
 
@@ -307,7 +324,13 @@ def install(
         logger.error("Claude app not found")
         sys.exit(1)
 
-    if claude.update_claude_config(file, server_name, uv_directory=uv_directory):
+    if claude.update_claude_config(
+        file,
+        server_name,
+        with_editable=with_editable,
+        with_packages=with_packages,
+        force=force,
+    ):
         name = server_name or file.stem
         print(f"Successfully installed {name} in Claude app")
     else:

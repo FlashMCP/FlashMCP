@@ -28,7 +28,9 @@ def update_claude_config(
     file: Path,
     server_name: Optional[str] = None,
     *,
-    uv_directory: Optional[Path] = None,
+    with_editable: Optional[Path] = None,
+    with_packages: Optional[list[str]] = None,
+    force: bool = False,
 ) -> bool:
     """Add the MCP server to Claude's configuration.
 
@@ -36,7 +38,9 @@ def update_claude_config(
         file: Path to the server file
         server_name: Optional custom name for the server. If not provided,
                     defaults to the file stem
-        uv_directory: Optional directory containing pyproject.toml
+        with_editable: Optional directory to install in editable mode
+        with_packages: Optional list of additional packages to install
+        force: If True, replace existing server with same name
     """
     config_dir = get_claude_config_path()
     if not config_dir:
@@ -54,17 +58,34 @@ def update_claude_config(
         # Use provided server_name or fall back to file stem
         name = server_name or file.stem
         if name in config["mcpServers"]:
-            logger.warning(
-                f"Server '{name}' already exists in Claude config",
+            if not force:
+                logger.warning(
+                    f"Server '{name}' already exists in Claude config. "
+                    "Use `--force` to replace.",
+                    extra={"config_file": str(config_file)},
+                )
+                return False
+            logger.info(
+                f"Replacing existing server '{name}' in Claude config",
                 extra={"config_file": str(config_file)},
             )
-            return False
 
         # Build uv run command
-        args = []
-        if uv_directory:
-            args.extend(["--directory", str(uv_directory)])
-        args.extend(["run", str(file)])
+        args = ["run"]
+
+        if with_editable:
+            args.extend(["--with-editable", str(with_editable)])
+
+        # Always include FlashMCP
+        args.extend(["--with", "FlashMCP"])
+
+        # Add additional packages
+        if with_packages:
+            for pkg in with_packages:
+                if pkg:
+                    args.extend(["--with", pkg])
+
+        args.append(str(file))
 
         config["mcpServers"][name] = {
             "command": "uv",

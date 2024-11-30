@@ -84,24 +84,34 @@ FlashMCP includes a development server with the MCP Inspector for testing your s
 # Basic usage
 FlashMCP dev your_server.py
 
-# Load dependencies from current directory's pyproject.toml
-FlashMCP dev your_server.py --uv-directory .
+# Install package in editable mode from current directory
+FlashMCP dev your_server.py --with-editable .
 
 # Install additional packages
-FlashMCP dev your_server.py --with pandas,numpy
+FlashMCP dev your_server.py --with pandas --with numpy
 
 # Combine both
-FlashMCP dev your_server.py --uv-directory . --with pandas,numpy
+FlashMCP dev your_server.py --with-editable . --with pandas --with numpy
 ```
 
-The `--with` flag automatically includes `FlashMCP` and any additional packages you specify. The `--uv-directory` flag tells uv where to find your project's dependencies.
+The `--with` flag automatically includes `FlashMCP` and any additional packages you specify. The `--with-editable` flag installs the package from the specified directory in editable mode, which is useful during development.
 
 ### Installing in Claude
 
 To use your server with Claude Desktop:
 
 ```bash
+# Basic usage
 FlashMCP install your_server.py --name "My Server"
+
+# Install package in editable mode
+FlashMCP install your_server.py --with-editable .
+
+# Install additional packages
+FlashMCP install your_server.py --with pandas --with numpy
+
+# Combine options
+FlashMCP install your_server.py --with-editable . --with pandas --with numpy
 ```
 
 
