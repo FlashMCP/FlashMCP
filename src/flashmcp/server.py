@@ -1,9 +1,16 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
+from typing import Any, Literal, Optional, Union
+
+from mcp.server import RequestContext
+from pydantic import BaseModel
+from pydantic.networks import AnyUrl
+
+from FlashMCP.utilities.logging import get_logger
 import asyncio
 import functools
 import json
-from typing import Any, Callable, Optional, Sequence, Union, Literal
+from typing import Callable, Sequence
 import inspect
 import re
 
@@ -25,7 +32,7 @@ from FlashMCP.exceptions import ResourceError
 from FlashMCP.resources import Resource, ResourceManager
 from FlashMCP.resources.types import FunctionResource
 from FlashMCP.tools import ToolManager
-from FlashMCP.utilities.logging import get_logger, configure_logging
+from FlashMCP.utilities.logging import configure_logging
 from FlashMCP.utilities.types import Image
 
 logger = get_logger(__name__)
@@ -368,3 +375,104 @@ def _convert_to_content(value: Any) -> Sequence[Union[TextContent, ImageContent]
             text=json.dumps(value, indent=2, default=pydantic.json.pydantic_encoder),
         )
     ]
+
+
+class Context(BaseModel):
+    """Context object providing access to MCP capabilities.
+
+    This provides a cleaner interface to MCP's RequestContext functionality.
+    It gets injected into tool and resource functions that request it via type hints.
+    """
+
+    _request_context: RequestContext
+    FlashMCP: FlashMCP
+
+    model_config: dict = dict(arbitrary_types_allowed=True)
+
+    async def report_progress(
+        self, progress: float, total: Optional[float] = None
+    ) -> None:
+        """Report progress for the current operation.
+
+        Args:
+            progress: Current progress value e.g. 24
+            total: Optional total value e.g. 100
+        """
+
+        progress_token = (
+            self._request_context.meta.progressToken
+            if self._request_context.meta
+            else None
+        )
+
+        if not progress_token:
+            return
+
+        await self._request_context.session.send_progress_notification(
+            progress_token=progress_token, progress=progress, total=total
+        )
+
+    async def read_resource(self, uri: Union[str, AnyUrl]) -> Union[str, bytes]:
+        """Read a resource by URI.
+
+        Args:
+            uri: Resource URI to read
+
+        Returns:
+            The resource content as either text or bytes
+        """
+        return await self.FlashMCP.read_resource(uri)
+
+    def log(
+        self,
+        level: Literal["debug", "info", "warning", "error"],
+        message: str,
+        *,
+        logger_name: Optional[str] = None,
+        **extra: Any,
+    ) -> None:
+        """Send a log message to the client.
+
+        Args:
+            level: Log level (debug, info, warning, error)
+            message: Log message
+            logger_name: Optional logger name
+            **extra: Additional structured data to include
+        """
+        self._request_context.session.send_log_message(
+            level=level, data=message, logger=logger_name, extra=extra
+        )
+
+    @property
+    def client_id(self) -> Optional[str]:
+        """Get the client ID if available."""
+        return (
+            self._request_context.meta.clientId if self._request_context.meta else None
+        )
+
+    @property
+    def request_id(self) -> str:
+        """Get the unique ID for this request."""
+        return self._request_context.request_id
+
+    @property
+    def session(self):
+        """Access to the underlying session for advanced usage."""
+        return self._request_context.session
+
+    # Convenience methods for common log levels
+    def debug(self, message: str, **extra: Any) -> None:
+        """Send a debug log message."""
+        self.log("debug", message, **extra)
+
+    def info(self, message: str, **extra: Any) -> None:
+        """Send an info log message."""
+        self.log("info", message, **extra)
+
+    def warning(self, message: str, **extra: Any) -> None:
+        """Send a warning log message."""
+        self.log("warning", message, **extra)
+
+    def error(self, message: str, **extra: Any) -> None:
+        """Send an error log message."""
+        self.log("error", message, **extra)
