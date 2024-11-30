@@ -1,6 +1,6 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
-from .server import FlashMCP
+from .server import FlashMCP, Context
 from .utilities.types import Image
 
-__all__ = ["FlashMCP", "Image"]
+__all__ = ["FlashMCP", "Context", "Image"]

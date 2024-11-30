@@ -1,13 +1,20 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
+import pydantic_core
+from typing import Any, Literal, Optional, Union
+
+from mcp.server import RequestContext
+from pydantic import BaseModel
+from pydantic.networks import AnyUrl
+
+from FlashMCP.utilities.logging import get_logger
 import asyncio
 import functools
 import json
-from typing import Any, Callable, Optional, Sequence, Union, Literal
+from typing import Callable, Sequence
 import inspect
 import re
 
-import pydantic.json
 from mcp.server import Server as MCPServer
 from mcp.server.stdio import stdio_server
 from mcp.server.sse import SseServerTransport
@@ -25,7 +32,7 @@ from FlashMCP.exceptions import ResourceError
 from FlashMCP.resources import Resource, ResourceManager
 from FlashMCP.resources.types import FunctionResource
 from FlashMCP.tools import ToolManager
-from FlashMCP.utilities.logging import get_logger, configure_logging
+from FlashMCP.utilities.logging import configure_logging
 from FlashMCP.utilities.types import Image
 
 logger = get_logger(__name__)
@@ -112,12 +119,22 @@ class FlashMCP:
             for info in tools
         ]
 
+    def get_context(self) -> Optional["Context"]:
+        try:
+            request_context = self._mcp_server.request_context
+            return Context(request_context=request_context, FlashMCP=self)
+        except LookupError:
+            return None
+
     async def call_tool(
         self, name: str, arguments: dict
     ) -> Sequence[Union[TextContent, ImageContent]]:
         """Call a tool by name with arguments."""
         try:
-            result = await self._tool_manager.call_tool(name, arguments)
+            context = self.get_context()
+            result = await self._tool_manager.call_tool(
+                name, arguments, context=context
+            )
             return _convert_to_content(result)
         except Exception as e:
             logger.error(f"Error calling tool {name}: {e}")
@@ -172,13 +189,45 @@ class FlashMCP:
         name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> None:
-        """Add a tool to the server."""
+        """Add a tool to the server.
+
+        The tool function can optionally request a Context object by adding a parameter
+        with the Context type annotation. See the @tool decorator for examples.
+
+        Args:
+            func: The function to register as a tool
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+        """
         self._tool_manager.add_tool(func, name=name, description=description)
 
     def tool(
         self, name: Optional[str] = None, description: Optional[str] = None
     ) -> Callable:
-        """Decorator to register a tool."""
+        """Decorator to register a tool.
+
+        Tools can optionally request a Context object by adding a parameter with the Context type annotation.
+        The context provides access to MCP capabilities like logging, progress reporting, and resource access.
+
+        Args:
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+
+        Example:
+            @server.tool()
+            def my_tool(x: int) -> str:
+                return str(x)
+
+            @server.tool()
+            def tool_with_context(x: int, ctx: Context) -> str:
+                ctx.info(f"Processing {x}")
+                return str(x)
+
+            @server.tool()
+            async def async_tool(x: int, context: Context) -> str:
+                await context.report_progress(50, 100)
+                return str(x)
+        """
         # Check if user passed function directly instead of calling decorator
         if callable(name):
             raise TypeError(
@@ -348,7 +397,7 @@ def _convert_to_content(value: Any) -> Sequence[Union[TextContent, ImageContent]
                 result.append(
                     TextContent(
                         type="text",
-                        text=json.dumps(item, default=pydantic.json.pydantic_encoder),
+                        text=json.dumps(pydantic_core.to_jsonable_python(item)),
                     )
                 )
         return result
@@ -365,6 +414,146 @@ def _convert_to_content(value: Any) -> Sequence[Union[TextContent, ImageContent]
     return [
         TextContent(
             type="text",
-            text=json.dumps(value, indent=2, default=pydantic.json.pydantic_encoder),
+            text=json.dumps(pydantic_core.to_jsonable_python(value)),
         )
     ]
+
+
+class Context(BaseModel):
+    """Context object providing access to MCP capabilities.
+
+    This provides a cleaner interface to MCP's RequestContext functionality.
+    It gets injected into tool and resource functions that request it via type hints.
+
+    To use context in a tool function, add a parameter with the Context type annotation:
+
+    ```python
+    @server.tool()
+    def my_tool(x: int, ctx: Context) -> str:
+        # Log messages to the client
+        ctx.info(f"Processing {x}")
+        ctx.debug("Debug info")
+        ctx.warning("Warning message")
+        ctx.error("Error message")
+
+        # Report progress
+        ctx.report_progress(50, 100)
+
+        # Access resources
+        data = ctx.read_resource("resource://data")
+
+        # Get request info
+        request_id = ctx.request_id
+        client_id = ctx.client_id
+
+        return str(x)
+    ```
+
+    The context parameter name can be anything as long as it's annotated with Context.
+    The context is optional - tools that don't need it can omit the parameter.
+    """
+
+    _request_context: RequestContext
+    _FlashMCP: FlashMCP
+
+    def __init__(
+        self, *, request_context: RequestContext, FlashMCP: FlashMCP, **kwargs: Any
+    ):
+        super().__init__(**kwargs)
+        self._request_context = request_context
+        self._FlashMCP = FlashMCP
+
+    @property
+    def FlashMCP(self) -> FlashMCP:
+        """Access to the FlashMCP server."""
+        return self._FlashMCP
+
+    @property
+    def request_context(self) -> RequestContext:
+        """Access to the underlying request context."""
+        return self._request_context
+
+    async def report_progress(
+        self, progress: float, total: Optional[float] = None
+    ) -> None:
+        """Report progress for the current operation.
+
+        Args:
+            progress: Current progress value e.g. 24
+            total: Optional total value e.g. 100
+        """
+
+        progress_token = (
+            self.request_context.meta.progressToken
+            if self.request_context.meta
+            else None
+        )
+
+        if not progress_token:
+            return
+
+        await self.request_context.session.send_progress_notification(
+            progress_token=progress_token, progress=progress, total=total
+        )
+
+    async def read_resource(self, uri: Union[str, AnyUrl]) -> Union[str, bytes]:
+        """Read a resource by URI.
+
+        Args:
+            uri: Resource URI to read
+
+        Returns:
+            The resource content as either text or bytes
+        """
+        return await self._FlashMCP.read_resource(uri)
+
+    def log(
+        self,
+        level: Literal["debug", "info", "warning", "error"],
+        message: str,
+        *,
+        logger_name: Optional[str] = None,
+    ) -> None:
+        """Send a log message to the client.
+
+        Args:
+            level: Log level (debug, info, warning, error)
+            message: Log message
+            logger_name: Optional logger name
+            **extra: Additional structured data to include
+        """
+        self.request_context.session.send_log_message(
+            level=level, data=message, logger=logger_name
+        )
+
+    @property
+    def client_id(self) -> Optional[str]:
+        """Get the client ID if available."""
+        return self.request_context.meta.clientId if self.request_context.meta else None
+
+    @property
+    def request_id(self) -> str:
+        """Get the unique ID for this request."""
+        return self.request_context.request_id
+
+    @property
+    def session(self):
+        """Access to the underlying session for advanced usage."""
+        return self.request_context.session
+
+    # Convenience methods for common log levels
+    def debug(self, message: str, **extra: Any) -> None:
+        """Send a debug log message."""
+        self.log("debug", message, **extra)
+
+    def info(self, message: str, **extra: Any) -> None:
+        """Send an info log message."""
+        self.log("info", message, **extra)
+
+    def warning(self, message: str, **extra: Any) -> None:
+        """Send a warning log message."""
+        self.log("warning", message, **extra)
+
+    def error(self, message: str, **extra: Any) -> None:
+        """Send an error log message."""
+        self.log("error", message, **extra)

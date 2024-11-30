@@ -1,5 +1,6 @@
 """Concrete resource implementations."""
 
+import pydantic_core
 import asyncio
 import json
 from pathlib import Path
@@ -58,8 +59,8 @@ class FunctionResource(Resource):
             if isinstance(result, str):
                 return result
             try:
-                return json.dumps(result, default=pydantic.json.pydantic_encoder)
-            except TypeError:
+                return json.dumps(pydantic_core.to_jsonable_python(result))
+            except (TypeError, pydantic_core.PydanticSerializationError):
                 # If JSON serialization fails, try str()
                 return str(result)
         except Exception as e:
