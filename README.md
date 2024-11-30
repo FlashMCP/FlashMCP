@@ -115,4 +115,3 @@ FlashMCP install your_server.py --with-editable . --with pandas --with numpy
 ```
 
 
-FlashMCP can be configured via environment variables with the prefix `FASTMCP_`:
