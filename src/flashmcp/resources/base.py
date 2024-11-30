@@ -1,11 +1,33 @@
 """Base classes and interfaces for FlashMCP resources."""
 
 import abc
-from typing import Union
+from typing import Annotated, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    FileUrl,
+    ValidationInfo,
+    field_validator,
+)
 
-from FlashMCP.types import LaxAnyUrl
+
+def maybe_cast_str_to_any_url(x) -> AnyUrl:
+    if isinstance(x, FileUrl):
+        return x
+    elif isinstance(x, AnyUrl):
+        return x
+    elif isinstance(x, str):
+        if x.startswith("file://"):
+            return FileUrl(x)
+        return AnyUrl(x)
+    raise ValueError(f"Expected str or AnyUrl, got {type(x)}")
+
+
+LaxAnyUrl = Annotated[AnyUrl, BeforeValidator(maybe_cast_str_to_any_url)]
 
 
 class Resource(BaseModel, abc.ABC):
