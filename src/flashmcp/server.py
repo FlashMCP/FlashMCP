@@ -20,14 +20,11 @@ from mcp.types import (
 from pydantic_settings import BaseSettings
 from pydantic.networks import _BaseUrl
 
-from .exceptions import ResourceError
-from .resources import (
-    Resource,
-    FunctionResource,
-    ResourceManager,
-)
-from .tools import ToolManager, Image
-from .utilities.logging import get_logger, configure_logging
+from FlashMCP.exceptions import ResourceError
+from FlashMCP.resources import Resource, ResourceManager
+from FlashMCP.resources.types import FunctionResource
+from FlashMCP.tools import ToolManager, Image
+from FlashMCP.utilities.logging import get_logger, configure_logging
 
 logger = get_logger(__name__)
 
