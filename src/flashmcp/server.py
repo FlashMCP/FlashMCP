@@ -4,6 +4,8 @@ import asyncio
 import functools
 import json
 from typing import Any, Callable, Optional, Sequence, Union, Literal
+import inspect
+import re
 
 import pydantic.json
 from mcp.server import Server as MCPServer
@@ -19,7 +21,11 @@ from pydantic_settings import BaseSettings
 from pydantic.networks import _BaseUrl
 
 from .exceptions import ResourceError
-from .resources import Resource, FunctionResource, ResourceManager
+from .resources import (
+    Resource,
+    FunctionResource,
+    ResourceManager,
+)
 from .tools import ToolManager, Image
 from .utilities.logging import get_logger, configure_logging
 
@@ -138,7 +144,7 @@ class FlashMCP:
 
     async def read_resource(self, uri: _BaseUrl) -> Union[str, bytes]:
         """Read a resource by URI."""
-        resource = self._resource_manager.get_resource(uri)
+        resource = await self._resource_manager.get_resource(uri)
         if not resource:
             raise ResourceError(f"Unknown resource: {uri}")
 
@@ -193,9 +199,17 @@ class FlashMCP:
         """Decorator to register a function as a resource.
 
         The function will be called when the resource is read to generate its content.
+        The function can return:
+        - str for text content
+        - bytes for binary content
+        - other types will be converted to JSON
+
+        If the URI contains parameters (e.g. "resource://{param}") or the function
+        has parameters, it will be registered as a template resource.
 
         Args:
-            uri: URI for the resource (e.g. "resource://my-resource")
+            uri: URI for the resource (e.g. "resource://my-resource" or "resource://{param}")
+            name: Optional name for the resource
             description: Optional description of the resource
             mime_type: Optional MIME type for the resource
 
@@ -203,6 +217,10 @@ class FlashMCP:
             @server.resource("resource://my-resource")
             def get_data() -> str:
                 return "Hello, world!"
+
+            @server.resource("resource://{city}/weather")
+            def get_weather(city: str) -> str:
+                return f"Weather for {city}"
         """
         # Check if user passed function directly instead of calling decorator
         if callable(uri):
@@ -213,61 +231,42 @@ class FlashMCP:
 
         def decorator(func: Callable) -> Callable:
             @functools.wraps(func)
-            def wrapper() -> Any:
-                return func()
-
-            resource = FunctionResource(
-                uri=uri,
-                name=name,
-                description=description,
-                mime_type=mime_type or "text/plain",
-                func=wrapper,
-            )
-            self.add_resource(resource)
-            return wrapper
-
-        return decorator
-
-    def template(
-        self,
-        uri_template: str,
-        *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        mime_type: Optional[str] = None,
-    ) -> Callable:
-        """Decorator to register a function as a resource template.
-
-        Args:
-            uri_template: URI template with parameters (e.g. "weather://{city}/current")
-            name: Optional name for the resource
-            description: Optional description of the resource
-            mime_type: Optional MIME type for the resource
-
-        Example:
-            @server.template("weather://{city}/current")
-            def get_weather(city: str) -> str:
-                return f"Weather for {city}"
-        """
-        # Check if user passed function directly instead of calling decorator
-        if callable(uri_template):
-            raise TypeError(
-                "The @template decorator was used incorrectly. "
-                "Did you forget to call it? Use @template('uri_template') instead of @template"
-            )
-
-        def decorator(func: Callable) -> Callable:
-            @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
                 return func(*args, **kwargs)
 
-            self._resource_manager.add_template(
-                wrapper,
-                uri_template=uri_template,
-                name=name,
-                description=description,
-                mime_type=mime_type or "text/plain",
-            )
+            # Check if this should be a template
+            has_uri_params = "{" in uri and "}" in uri
+            has_func_params = bool(inspect.signature(func).parameters)
+
+            if has_uri_params or has_func_params:
+                # Validate that URI params match function params
+                uri_params = set(re.findall(r"{(\w+)}", uri))
+                func_params = set(inspect.signature(func).parameters.keys())
+
+                if uri_params != func_params:
+                    raise ValueError(
+                        f"Mismatch between URI parameters {uri_params} "
+                        f"and function parameters {func_params}"
+                    )
+
+                # Register as template
+                self._resource_manager.add_template(
+                    wrapper,
+                    uri_template=uri,
+                    name=name,
+                    description=description,
+                    mime_type=mime_type or "text/plain",
+                )
+            else:
+                # Register as regular resource
+                resource = FunctionResource(
+                    uri=uri,
+                    name=name,
+                    description=description,
+                    mime_type=mime_type or "text/plain",
+                    func=wrapper,
+                )
+                self.add_resource(resource)
             return wrapper
 
         return decorator

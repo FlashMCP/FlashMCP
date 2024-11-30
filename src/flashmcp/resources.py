@@ -1,3 +1,4 @@
+import inspect
 import pydantic.json
 import abc
 import asyncio
@@ -19,20 +20,30 @@ class Resource(BaseModel, abc.ABC):
     """Base class for all resources."""
 
     uri: _BaseUrl = Field(description="URI of the resource")
-    name: str = Field(description="Name of the resource")
-    description: Optional[str] = Field(description="Description of the resource")
-    mime_type: Optional[str] = Field(description="MIME type of the resource content")
+    name: str = Field(description="Name of the resource", default=None)
+    description: Optional[str] = Field(
+        description="Description of the resource", default=None
+    )
+    mime_type: str = Field(
+        default="text/plain",
+        description="MIME type of the resource content",
+        pattern=r"^[a-zA-Z0-9]+/[a-zA-Z0-9\-+.]+$",
+    )
 
     @field_validator("name", mode="before")
     @classmethod
     def set_default_name(cls, name: str | None, info) -> str:
         """Set default name from URI if not provided."""
-        if name is not None:
+        if name:
             return name
         # Extract everything after the protocol (e.g., "desktop" from "resource://desktop")
         uri = info.data.get("uri")
         if uri:
-            return str(uri).split("://", 1)[1]
+            uri_str = str(uri)
+            if "://" in uri_str:
+                name = uri_str.split("://", 1)[1]
+                if name:
+                    return name
         raise ValueError("Either name or uri must be provided")
 
     @abc.abstractmethod
@@ -40,14 +51,15 @@ class Resource(BaseModel, abc.ABC):
         """Read the resource content."""
         pass
 
+    model_config = {
+        "validate_default": True,
+    }
+
 
 class TextResource(Resource):
-    """A resource containing text content."""
+    """A resource that reads from a string."""
 
     text: str = Field(description="Text content of the resource")
-    mime_type: Optional[str] = Field(
-        default="text/plain", description="MIME type of the resource content"
-    )
 
     async def read(self) -> str:
         """Read the text content."""
@@ -55,25 +67,62 @@ class TextResource(Resource):
 
 
 class BinaryResource(Resource):
-    """A resource containing binary content."""
+    """A resource that reads from bytes."""
 
     data: bytes = Field(description="Binary content of the resource")
-    mime_type: Optional[str] = Field(
-        default="application/octet-stream",
-        description="MIME type of the resource content",
-    )
 
     async def read(self) -> bytes:
         """Read the binary content."""
         return self.data
 
 
+class FunctionResource(Resource):
+    """A resource that defers data loading by wrapping a function.
+
+    The function is only called when the resource is read, allowing for lazy loading
+    of potentially expensive data. This is particularly useful when listing resources,
+    as the function won't be called until the resource is actually accessed.
+
+    The function can return:
+    - str for text content (default)
+    - bytes for binary content
+    - other types will be converted to JSON
+    """
+
+    func: Callable[[], Any] = Field(exclude=True)
+
+    async def read(self) -> Union[str, bytes]:
+        """Read the resource by calling the wrapped function."""
+        try:
+            result = self.func()
+            if isinstance(result, Resource):
+                return await result.read()
+            if isinstance(result, bytes):
+                return result
+            if isinstance(result, str):
+                return result
+            try:
+                return json.dumps(result, default=pydantic.json.pydantic_encoder)
+            except TypeError:
+                # If JSON serialization fails, try str()
+                return str(result)
+        except Exception as e:
+            raise ValueError(f"Error reading resource {self.uri}: {e}")
+
+
 class FileResource(Resource):
-    """A resource that reads from a file."""
+    """A resource that reads from a file.
+
+    Set is_binary=True to read file as binary data instead of text.
+    """
 
     path: Path = Field(description="Path to the file")
-    mime_type: Optional[str] = Field(
-        default="application/octet-stream",
+    is_binary: bool = Field(
+        default=False,
+        description="Whether to read the file as binary data",
+    )
+    mime_type: str = Field(
+        default="text/plain",
         description="MIME type of the resource content",
     )
 
@@ -87,17 +136,12 @@ class FileResource(Resource):
 
     async def read(self) -> Union[str, bytes]:
         """Read the file content."""
-        if self.mime_type and self.mime_type.startswith("text/"):
-            return await self._read_text()
-        return await self._read_binary()
-
-    async def _read_text(self) -> str:
-        """Read file as text."""
-        return await asyncio.to_thread(self.path.read_text)
-
-    async def _read_binary(self) -> bytes:
-        """Read file as binary."""
-        return await asyncio.to_thread(self.path.read_bytes)
+        try:
+            if self.is_binary:
+                return await asyncio.to_thread(self.path.read_bytes)
+            return await asyncio.to_thread(self.path.read_text)
+        except Exception as e:
+            raise ValueError(f"Error reading file {self.path}: {e}")
 
 
 class HttpResource(Resource):
@@ -180,7 +224,7 @@ class ResourceTemplate(BaseModel):
     description: Optional[str] = Field(
         description="Description of what the resource does"
     )
-    mime_type: Optional[str] = Field(
+    mime_type: str = Field(
         default="text/plain", description="MIME type of the resource content"
     )
     func: Callable = Field(exclude=True)
@@ -210,7 +254,6 @@ class ResourceTemplate(BaseModel):
             uri_template=uri_template,
             name=func_name,
             description=description or func.__doc__ or "",
-            mime_type=mime_type or "text/plain",
             func=func,
             parameters=parameters,
         )
@@ -226,30 +269,20 @@ class ResourceTemplate(BaseModel):
 
     async def create_resource(self, uri: str, params: Dict[str, Any]) -> Resource:
         """Create a resource from the template with the given parameters."""
-        result = await self.func(**params)
+        try:
+            # Call function and check if result is a coroutine
+            result = self.func(**params)
+            if inspect.iscoroutine(result):
+                result = await result
 
-        if isinstance(result, bytes):
-            return BinaryResource(
+            return FunctionResource(
                 uri=uri,
                 name=self.name,
                 description=self.description,
-                mime_type=self.mime_type,
-                data=result,
+                func=lambda: result,  # Capture result in closure
             )
-
-        else:
-            if not isinstance(result, str):
-                try:
-                    result = json.dumps(result, default=pydantic.json.pydantic_encoder)
-                except Exception as e:
-                    raise ValueError(f"Error converting result to JSON: {e}")
-            return TextResource(
-                uri=uri,
-                name=self.name,
-                description=self.description,
-                mime_type=self.mime_type,
-                text=result,
-            )
+        except Exception as e:
+            raise ValueError(f"Error creating resource from template: {e}")
 
 
 class ResourceManager:

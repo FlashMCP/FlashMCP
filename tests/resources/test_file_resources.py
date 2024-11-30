@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import NamedTemporaryFile
 
 from FlashMCP.resources import FileResource
 
@@ -22,20 +22,6 @@ def temp_file():
         pass  # File was already deleted by the test
 
 
-@pytest.fixture
-def temp_dir_with_files():
-    """Create a temporary directory with test files."""
-    with TemporaryDirectory() as d:
-        path = Path(d).resolve()
-        # Create some test files
-        (path / "file1.txt").write_text("content1")
-        (path / "file2.txt").write_text("content2")
-        (path / "subdir").mkdir()
-        (path / "subdir/file3.txt").write_text("content3")
-        (path / "test.json").write_text('{"key": "value"}')
-        yield path
-
-
 class TestFileResource:
     """Test FileResource functionality."""
 
@@ -45,23 +31,14 @@ class TestFileResource:
             uri=f"file://{temp_file}",
             name="test",
             description="test file",
-            mime_type="text/plain",
             path=temp_file,
         )
         assert str(resource.uri) == f"file://{temp_file}"
         assert resource.name == "test"
         assert resource.description == "test file"
-        assert resource.mime_type == "text/plain"
+        assert resource.mime_type == "text/plain"  # default
         assert resource.path == temp_file
-
-    def test_file_resource_relative_path_error(self):
-        """Test FileResource rejects relative paths."""
-        with pytest.raises(ValueError, match="Path must be absolute"):
-            FileResource(
-                uri="file://test.txt",
-                name="test",
-                path=Path("test.txt"),
-            )
+        assert resource.is_binary is False  # default
 
     def test_file_resource_str_path_conversion(self, temp_file: Path):
         """Test FileResource handles string paths."""
@@ -73,8 +50,8 @@ class TestFileResource:
         assert isinstance(resource.path, Path)
         assert resource.path.is_absolute()
 
-    async def test_file_resource_read(self, temp_file: Path):
-        """Test reading a FileResource."""
+    async def test_read_text_file(self, temp_file: Path):
+        """Test reading a text file."""
         resource = FileResource(
             uri=f"file://{temp_file}",
             name="test",
@@ -82,19 +59,42 @@ class TestFileResource:
         )
         content = await resource.read()
         assert content == "test content"
+        assert resource.mime_type == "text/plain"
 
-    async def test_file_resource_read_missing_file(self, temp_file: Path):
-        """Test reading a non-existent file."""
-        temp_file.unlink()
+    async def test_read_binary_file(self, temp_file: Path):
+        """Test reading a file as binary."""
         resource = FileResource(
             uri=f"file://{temp_file}",
             name="test",
             path=temp_file,
+            is_binary=True,
         )
-        with pytest.raises(FileNotFoundError):
+        content = await resource.read()
+        assert isinstance(content, bytes)
+        assert content == b"test content"
+
+    def test_relative_path_error(self):
+        """Test error on relative path."""
+        with pytest.raises(ValueError, match="Path must be absolute"):
+            FileResource(
+                uri="file:///test.txt",
+                name="test",
+                path=Path("test.txt"),
+            )
+
+    async def test_missing_file_error(self, temp_file: Path):
+        """Test error when file doesn't exist."""
+        # Create path to non-existent file
+        missing = temp_file.parent / "missing.txt"
+        resource = FileResource(
+            uri="file:///missing.txt",
+            name="test",
+            path=missing,
+        )
+        with pytest.raises(ValueError, match="Error reading file"):
             await resource.read()
 
-    async def test_file_resource_read_permission_error(self, temp_file: Path):
+    async def test_permission_error(self, temp_file: Path):
         """Test reading a file without permissions."""
         temp_file.chmod(0o000)  # Remove all permissions
         try:
@@ -103,7 +103,7 @@ class TestFileResource:
                 name="test",
                 path=temp_file,
             )
-            with pytest.raises(PermissionError):
+            with pytest.raises(ValueError, match="Error reading file"):
                 await resource.read()
         finally:
             temp_file.chmod(0o644)  # Restore permissions
