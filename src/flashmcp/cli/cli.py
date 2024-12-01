@@ -263,7 +263,7 @@ def run(
 
     except Exception as e:
         logger.error(
-            "Failed to run server",
+            f"Failed to run server: {e}",
             extra={
                 "file": str(file),
                 "error": str(e),
