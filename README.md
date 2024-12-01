@@ -7,7 +7,7 @@
 [![Tests](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml/badge.svg)](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml)
 [![License](https://img.shields.io/github/license/jlowin/FlashMCP.svg)](https://github.com/jlowin/FlashMCP/blob/main/LICENSE)
 
-A fast, Pythonic way to build [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers
+The fast, Pythonic way to build [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers
 
 </div>
 
