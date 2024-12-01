@@ -69,6 +69,7 @@ FlashMCP handles all the complex protocol details and server management, so you 
 - [Examples](#examples)
   - [Echo Server](#echo-server)
   - [SQLite Explorer](#sqlite-explorer)
+- [Contributing](#contributing)
 
 ## Installation
 
@@ -82,6 +83,8 @@ Or with pip:
 ```bash
 pip install FlashMCP
 ```
+
+See the [Contributing](#contributing) section for information on how to contribute to FlashMCP.
 
 ## Quickstart
 
@@ -425,3 +428,73 @@ Schema:
 
 What insights can you provide about the structure and relationships?"""
 ```
+
+## Contributing
+
+<details>
+
+<summary>Development Guide</summary>
+
+### Development Guide
+
+#### Prerequisites
+
+FlashMCP requires Python 3.10+.
+
+#### Installation
+
+Clone a fork of the repository and install the dependencies:
+
+
+git clone https://github.com/youFancyUserYou/FlashMCP.git
+cd FlashMCP
+Activate a virtual environment:
+
+
+```bash
+uv venv
+source .venv/bin/activate
+uv sync --frozen --all-extras --dev
+```
+
+#### Install the pre-commit hooks:
+
+```bash
+pre-commit install
+```
+
+#### Testing
+
+Run the tests:
+
+
+```bash
+pytest -vv
+```
+
+
+#### Opening a Pull Request
+
+Fork the repository and create a new branch:
+
+```bash
+git checkout -b my-branch
+```
+
+Make your changes and commit them:
+
+
+```bash
+git add . && git commit -m "My changes"
+```
+
+Push your changes to your fork:
+
+
+```bash
+git push origin my-branch
+```
+
+Feel free to reach out in a GitHub Issue or Discussions if you have any questions!
+
+</details>
