@@ -439,17 +439,18 @@ What insights can you provide about the structure and relationships?"""
 
 #### Prerequisites
 
-FlashMCP requires Python 3.10+.
+FlashMCP requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
 #### Installation
 
-Clone a fork of the repository and install the dependencies:
+Create a fork of this repository, then clone it:
 
-
-git clone https://github.com/youFancyUserYou/FlashMCP.git
+```bash
+git clone https://github.com/YouFancyUserYou/FlashMCP.git
 cd FlashMCP
-Activate a virtual environment:
+```
 
+Next, create a virtual environment and install FlashMCP:
 
 ```bash
 uv venv
@@ -457,21 +458,34 @@ source .venv/bin/activate
 uv sync --frozen --all-extras --dev
 ```
 
-#### Install the pre-commit hooks:
 
-```bash
-pre-commit install
-```
 
 #### Testing
 
-Run the tests:
+Please make sure to test any new functionality. Your tests should be simple and atomic and anticipate change rather than cement complex patterns.
+
+Run tests from the root directory:
 
 
 ```bash
 pytest -vv
 ```
 
+#### Formatting
+
+FlashMCP enforces a variety of required formats, which you can automatically enforce with pre-commit. 
+
+Install the pre-commit hooks:
+
+```bash
+pre-commit install
+```
+
+The hooks will now run on every commit (as well as on every PR). To run them manually:
+
+```bash
+pre-commit run --all-files
+```
 
 #### Opening a Pull Request
 
@@ -495,6 +509,6 @@ Push your changes to your fork:
 git push origin my-branch
 ```
 
-Feel free to reach out in a GitHub Issue or Discussions if you have any questions!
+Feel free to reach out in a GitHub issue or discussion if you have any questions!
 
 </details>
