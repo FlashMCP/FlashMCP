@@ -3,11 +3,12 @@
 
 <div align="center">
 
+<strong>The fast, Pythonic way to build MCP servers.</strong>
+
 [![PyPI - Version](https://img.shields.io/pypi/v/FlashMCP.svg)](https://pypi.org/project/FlashMCP)
 [![Tests](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml/badge.svg)](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml)
 [![License](https://img.shields.io/github/license/jlowin/FlashMCP.svg)](https://github.com/jlowin/FlashMCP/blob/main/LICENSE)
 
-The fast, Pythonic way to build MCP servers
 
 </div>
 
