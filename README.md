@@ -433,9 +433,7 @@ What insights can you provide about the structure and relationships?"""
 
 <details>
 
-<summary>Development Guide</summary>
-
-### Development Guide
+<summary><h3>Open Developer Guide</h3></summary>
 
 #### Prerequisites
 
