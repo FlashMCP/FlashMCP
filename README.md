@@ -80,7 +80,7 @@ def get_greeting(name: str) -> str:
 
 To use this server, you have two options:
 
-1. Install it in Claude Desktop:
+1. Install it in [Claude Desktop](https://claude.ai/download):
 ```bash
 FlashMCP install server.py
 ```
