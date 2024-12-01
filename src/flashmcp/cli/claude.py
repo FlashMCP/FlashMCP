@@ -3,7 +3,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 
 from ..utilities.logging import get_logger
 
@@ -30,16 +30,17 @@ def update_claude_config(
     *,
     with_editable: Optional[Path] = None,
     with_packages: Optional[list[str]] = None,
-    force: bool = False,
+    env_vars: Optional[Dict[str, str]] = None,
 ) -> bool:
-    """Add the MCP server to Claude's configuration.
+    """Add or update a FlashMCP server in Claude's configuration.
 
     Args:
         file_spec: Path to the server file, optionally with :object suffix
         server_name: Name for the server in Claude's config
         with_editable: Optional directory to install in editable mode
         with_packages: Optional list of additional packages to install
-        force: If True, replace existing server with same name
+        env_vars: Optional dictionary of environment variables. These are merged with
+            any existing variables, with new values taking precedence.
     """
     config_dir = get_claude_config_path()
     if not config_dir:
@@ -54,18 +55,17 @@ def update_claude_config(
         if "mcpServers" not in config:
             config["mcpServers"] = {}
 
-        if server_name in config["mcpServers"]:
-            if not force:
-                logger.warning(
-                    f"Server '{server_name}' already exists in Claude config. "
-                    "Use `--force` to replace.",
-                    extra={"config_file": str(config_file)},
-                )
-                return False
-            logger.info(
-                f"Replacing existing server '{server_name}' in Claude config",
-                extra={"config_file": str(config_file)},
-            )
+        # Always preserve existing env vars and merge with new ones
+        if (
+            server_name in config["mcpServers"]
+            and "env" in config["mcpServers"][server_name]
+        ):
+            existing_env = config["mcpServers"][server_name]["env"]
+            if env_vars:
+                # New vars take precedence over existing ones
+                env_vars = {**existing_env, **env_vars}
+            else:
+                env_vars = existing_env
 
         # Build uv run command
         args = ["run", "--with", "FlashMCP"]
@@ -89,10 +89,16 @@ def update_claude_config(
         # Add FlashMCP run command
         args.extend(["FlashMCP", "run", file_spec])
 
-        config["mcpServers"][server_name] = {
+        server_config = {
             "command": "uv",
             "args": args,
         }
+
+        # Add environment variables if specified
+        if env_vars:
+            server_config["env"] = env_vars
+
+        config["mcpServers"][server_name] = server_config
 
         config_file.write_text(json.dumps(config, indent=2))
         logger.info(
