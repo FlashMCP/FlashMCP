@@ -27,14 +27,8 @@ class Resource(BaseModel, abc.ABC):
         """Set default name from URI if not provided."""
         if name:
             return name
-        # Extract everything after the protocol (e.g., "desktop" from "resource://desktop")
-        uri = info.data.get("uri")
-        if uri:
-            uri_str = str(uri)
-            if "://" in uri_str:
-                name = uri_str.split("://", 1)[1]
-                if name:
-                    return name
+        if uri := info.data.get("uri"):
+            return str(uri)
         raise ValueError("Either name or uri must be provided")
 
     @abc.abstractmethod

@@ -1,187 +1,362 @@
-# FlashMCP
+<!-- omit in toc -->
+# FlashMCP 
 
-> **Note**: This is experimental software. The Model Context Protocol itself is only a few days old and the specification is still evolving.
+<div align="center">
 
-A fast, pythonic way to build Model Context Protocol (MCP) servers.
+[![PyPI - Version](https://img.shields.io/pypi/v/FlashMCP.svg)](https://pypi.org/project/FlashMCP)
+[![Tests](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml/badge.svg)](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml)
+[![License](https://img.shields.io/github/license/jlowin/FlashMCP.svg)](https://github.com/jlowin/FlashMCP/blob/main/LICENSE)
 
-Anthropic's new [Model Context Protocol](https://modelcontextprotocol.io) is a powerful way to give broadcast new functionality and context to LLMs. However, developing MCP servers can be cumbersome. FlashMCP provides a simple, intuitive interface for creating MCP servers in Python.
+</div>
 
+FlashMCP is a high-level, intuitive framework for building [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers with Python. While MCP is a powerful protocol that enables LLMs to interact with local data and tools in a secure, standardized way, the specification can be cumbersome to implement directly. FlashMCP lets you build fully compliant MCP servers in the most Pythonic way possible - in many cases, simply decorating a function is all that's required.
+
+🚧 *Note: FlashMCP is under active development, as is the low-level MCP Python SDK* 🏗️
+
+Key features:
+* **Intuitive**: Designed to feel familiar to Python developers, with powerful type hints and editor support
+* **Simple**: Build compliant MCP servers with minimal boilerplate
+* **Fast**: High-performance async implementation
+* **Full-featured**: Complete implementation of the MCP specification
+
+<!-- omit in toc -->
 ## Table of Contents
 
-- [FlashMCP](#FlashMCP)
-  - [Table of Contents](#table-of-contents)
-  - [Installation](#installation)
-  - [Quick Start](#quick-start)
-  - [Core Concepts](#core-concepts)
-    - [Resources](#resources)
-    - [Tools](#tools)
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+- [What is MCP?](#what-is-mcp)
+- [Core Concepts](#core-concepts)
+  - [Server](#server)
+  - [Resources](#resources)
+  - [Tools](#tools)
+  - [Prompts](#prompts)
+  - [Images](#images)
+  - [Context](#context)
+- [Deployment](#deployment)
   - [Development](#development)
-    - [Running the Dev Inspector](#running-the-dev-inspector)
-    - [Installing in Claude](#installing-in-claude)
-  - [License](#license)
+  - [Claude Desktop](#claude-desktop)
+- [Examples](#examples)
+  - [Echo Server](#echo-server)
+  - [SQLite Explorer](#sqlite-explorer)
 
 ## Installation
 
-MCP servers require you to use [uv](https://github.com/astral-sh/uv) as your dependency manager.
-
-Install uv with brew:
 ```bash
-brew install uv
-```
-*(Editor's note: I was unable to get MCP servers working unless uv was installed with brew.)*
-
-Install FlashMCP:
-```bash
+# We strongly recommend installing with uv
+brew install uv  # on macOS
 uv pip install FlashMCP
 ```
 
-## Quick Start
+Or with pip:
+```bash
+pip install FlashMCP
+```
 
-Here's a simple example that exposes your desktop directory as a resource and provides a basic addition tool:
+## Quickstart
+
+Let's create a simple MCP server that exposes a calculator tool and some data:
 
 ```python
-from pathlib import Path
 from FlashMCP import FlashMCP
 
-# Create server
+
+# Create an MCP server
 mcp = FlashMCP("Demo")
 
-@mcp.resource("dir://desktop")
-def desktop() -> list[str]:
-    """List the files in the user's desktop"""
-    desktop = Path.home() / "Desktop"
-    return [str(f) for f in desktop.iterdir()]
 
+# Add an addition tool
 @mcp.tool()
 def add(a: int, b: int) -> int:
     """Add two numbers"""
     return a + b
 
-if __name__ == "__main__":
-    mcp.run()
+
+# Add a dynamic greeting resource
+@mcp.resource("greeting://{name}")
+def get_greeting(name: str) -> str:
+    """Get a personalized greeting"""
+    return f"Hello, {name}!"
 ```
+
+To use this server, you have two options:
+
+1. Install it in Claude Desktop:
+```bash
+FlashMCP install server.py
+```
+
+2. Test it with the MCP Inspector:
+```bash
+FlashMCP dev server.py
+```
+
+![MCP Inspector](docs/images/mcp-inspector.png)
+
+## What is MCP?
+
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) lets you build servers that expose data and functionality to LLM applications in a secure, standardized way. Think of it like a web API, but specifically designed for LLM interactions. MCP servers can:
+
+- Expose data through **Resources** (like GET endpoints)
+- Provide functionality through **Tools** (like POST endpoints)
+- Define interaction patterns through **Prompts** (reusable templates for LLM interactions)
 
 ## Core Concepts
 
-FlashMCP makes it easy to expose two types of functionality to LLMs: Resources and Tools.
+*Note: All code examples below assume you've created a FlashMCP server instance called `mcp`.*
+
+### Server
+
+The FlashMCP server is your core interface to the MCP protocol. It handles connection management, protocol compliance, and message routing:
+
+```python
+from FlashMCP import FlashMCP
+
+# Create a named server
+mcp = FlashMCP("My App")
+
+# Configure host/port for HTTP transport (optional)
+mcp = FlashMCP("My App", host="localhost", port=8000)
+```
 
 ### Resources
 
-Resources are data sources that can be accessed by the LLM. They're perfect for providing context like files, API responses, or database queries.
+Resources are how you expose data to LLMs. They're similar to GET endpoints in a REST API - they provide data but shouldn't perform significant computation or have side effects. Some examples:
 
-FlashMCP provides a simple `@resource` decorator that handles both static and dynamic resources. While the MCP spec distinguishes between resources and templates, FlashMCP automatically handles this distinction based on your function signature:
+- File contents
+- Database schemas
+- API responses
+- System information
 
+Resources can be static:
 ```python
-# Static resource
-@mcp.resource("resource://static")
-def get_static() -> str:
-    """Return static content"""
-    return "Static content"
-
-# Dynamic resource
-@mcp.resource("resource://{city}/weather")
-def get_weather(city: str) -> str:
-    """Get weather for a city"""
-    return f"Weather for {city}"
-
-# Multiple parameters are supported
-@mcp.resource("db://users/{user_id}/posts/{post_id}")
-def get_user_post(user_id: int, post_id: int) -> dict:
-    """Get a specific post by a user"""
-    return {
-        "user_id": user_id,
-        "post_id": post_id,
-        "content": "Post content..."
-    }
-
-# File resources
-@mcp.resource("file://config.json") 
+@mcp.resource("config://app")
 def get_config() -> str:
-    """Read the config file"""
-    return Path("config.json").read_text()
+    """Static configuration data"""
+    return "App configuration here"
 ```
 
-Resources can return:
-- Strings for text content 
-- Bytes for binary content
-- Other types will be converted to JSON
-
-When your resource URI includes parameters in curly braces (like `{city}`) and your function accepts matching arguments, FlashMCP automatically sets up a template resource behind the scenes. This means you don't need to worry about the distinction between resources and templates in the MCP spec - just write your function, and FlashMCP handles the rest.
-
-> **Note**: If you're familiar with the MCP spec, you might notice that dynamic resources are implemented as templates under the hood. FlashMCP simplifies this by providing a unified interface through the `@resource` decorator. This is similar to how web frameworks often unify GET and POST handlers under a single route decorator.
-
+Or dynamic with parameters (FlashMCP automatically handles these as MCP templates):
+```python
+@mcp.resource("users://{user_id}/profile")
+def get_user_profile(user_id: str) -> str:
+    """Dynamic user data"""
+    return f"Profile data for user {user_id}"
+```
 
 ### Tools
 
-Tools are functions that can be called by the LLM to perform actions. They're great for calculations, API calls, or any interactive functionality. Tools are defined using the `@tool` decorator:
+Tools let LLMs take actions through your server. Unlike resources, tools are expected to perform computation and have side effects. They're similar to POST endpoints in a REST API.
 
+Simple calculation example:
 ```python
 @mcp.tool()
-def search_docs(query: str, max_results: int = 5) -> list[dict]:
-    """Search documentation for relevant entries"""
-    results = perform_search(query, limit=max_results)
-    return [{"title": r.title, "excerpt": r.excerpt} for r in results]
+def calculate_bmi(weight_kg: float, height_m: float) -> float:
+    """Calculate BMI given weight in kg and height in meters"""
+    return weight_kg / (height_m ** 2)
+```
+
+HTTP request example:
+```python
+import httpx
 
 @mcp.tool()
-def analyze_image(image_path: str) -> dict:
-    """Analyze an image and return metadata"""
-    from PIL import Image
-    img = Image.open(image_path)
-    return {
-        "size": img.size,
-        "mode": img.mode,
-        "format": img.format
-    }
+async def fetch_weather(city: str) -> str:
+    """Fetch current weather for a city"""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.weather.com/{city}"
+        )
+        return response.text
 ```
 
-Tools support:
-- Type hints for parameters
-- Default values
-- Async functions
-- Return value conversion to JSON
+### Prompts
 
-## Development
+Prompts are reusable templates that help LLMs interact with your server effectively. They're like "best practices" encoded into your server. A prompt can be as simple as a string:
 
-FlashMCP includes developer tools to make testing and debugging easier.
+```python
+@mcp.prompt()
+def review_code(code: str) -> str:
+    return f"Please review this code:\n\n{code}"
+```
 
-### Running the Dev Inspector
+Or a more structured sequence of messages:
+```python
+from FlashMCP.prompts.base import UserMessage, AssistantMessage
 
-The MCP Inspector helps you test your server during development:
+@mcp.prompt()
+def debug_error(error: str) -> list[Message]:
+    return [
+        UserMessage("I'm seeing this error:"),
+        UserMessage(error),
+        AssistantMessage("I'll help debug that. What have you tried so far?")
+    ]
+```
+
+
+### Images
+
+FlashMCP provides an `Image` class that automatically handles image data in your server:
+
+```python
+from FlashMCP import FlashMCP, Image
+from PIL import Image as PILImage
+
+@mcp.tool()
+def create_thumbnail(image_path: str) -> Image:
+    """Create a thumbnail from an image"""
+    img = PILImage.open(image_path)
+    img.thumbnail((100, 100))
+    
+    # FlashMCP automatically handles conversion and MIME types
+    return Image(data=img.tobytes(), format="png")
+
+@mcp.tool()
+def load_image(path: str) -> Image:
+    """Load an image from disk"""
+    # FlashMCP handles reading and format detection
+    return Image(path=path)
+```
+
+Images can be used as the result of both tools and resources.
+
+### Context
+
+The Context object gives your tools and resources access to MCP capabilities. To use it, add a parameter annotated with `FlashMCP.Context`:
+
+```python
+from FlashMCP import FlashMCP, Context
+
+@mcp.tool()
+async def long_task(files: list[str], ctx: Context) -> str:
+    """Process multiple files with progress tracking"""
+    for i, file in enumerate(files):
+        ctx.info(f"Processing {file}")
+        await ctx.report_progress(i, len(files))
+        
+        # Read another resource if needed
+        data = await ctx.read_resource(f"file://{file}")
+        
+    return "Processing complete"
+```
+
+The Context object provides:
+- Progress reporting through `report_progress()`
+- Logging via `debug()`, `info()`, `warning()`, and `error()`
+- Resource access through `read_resource()`
+- Request metadata via `request_id` and `client_id`
+
+## Deployment
+
+The FlashMCP CLI helps you develop and deploy MCP servers.
+
+Note that for all deployment commands, you are expected to provide the fully qualified path to your server object. For example, if you have a file `server.py` that contains a FlashMCP server named `my_server`, you would provide `path/to/server.py:my_server`.
+
+If your server variable has one of the standard names (`mcp`, `server`, or `app`), you can omit the server name from the path and just provide the file: `path/to/server.py`.
+
+### Development
+
+Test and debug your server with the MCP Inspector:
+```bash
+# Provide the fully qualified path to your server
+FlashMCP dev server.py:my_mcp_server
+
+# Or just the file if your server is named 'mcp', 'server', or 'app'
+FlashMCP dev server.py
+```
+
+Your server is run in an isolated environment, so you'll need to indicate any dependencies with the `--with` flag. FlashMCP is automatically included. If you are working on a uv project, you can use the `--with-editable` flag to mount your current directory:   
 
 ```bash
-# Basic usage
-FlashMCP dev your_server.py
+# With additional packages
+FlashMCP dev server.py --with pandas --with numpy
 
-# Install package in editable mode from current directory
-FlashMCP dev your_server.py --with-editable .
-
-# Install additional packages
-FlashMCP dev your_server.py --with pandas --with numpy
-
-# Combine both
-FlashMCP dev your_server.py --with-editable . --with pandas --with numpy
+# Using your project's dependencies and up-to-date code
+FlashMCP dev server.py --with-editable .
 ```
 
-The `--with` flag automatically includes `FlashMCP` and any additional packages you specify. The `--with-editable` flag installs the package from the specified directory in editable mode, which is useful during development.
+### Claude Desktop
 
-### Installing in Claude
-
-To use your server with Claude Desktop:
-
+Install your server in Claude Desktop:
 ```bash
-# Basic usage
-FlashMCP install your_server.py --name "My Server"
+# Basic usage (name is taken from your FlashMCP instance)
+FlashMCP install server.py
 
-# Install package in editable mode
-FlashMCP install your_server.py --with-editable .
+# With a custom name
+FlashMCP install server.py --name "My Server"
 
-# Install additional packages
-FlashMCP install your_server.py --with pandas --with numpy
+# With dependencies
+FlashMCP install server.py --with pandas --with numpy
 
-# Combine options
-FlashMCP install your_server.py --with-editable . --with pandas --with numpy
+# Replace an existing server
+FlashMCP install server.py --force
 ```
 
-## License
+The server name in Claude will be:
+1. The `--name` parameter if provided
+2. The `name` from your FlashMCP instance
+3. The filename if the server can't be imported
 
-Apache 2.0
+## Examples
+
+### Echo Server
+A simple server demonstrating resources, tools, and prompts:
+
+```python
+from FlashMCP import FlashMCP
+
+mcp = FlashMCP("Echo")
+
+@mcp.resource("echo://{message}")
+def echo_resource(message: str) -> str:
+    """Echo a message as a resource"""
+    return f"Resource echo: {message}"
+
+@mcp.tool()
+def echo_tool(message: str) -> str:
+    """Echo a message as a tool"""
+    return f"Tool echo: {message}"
+
+@mcp.prompt()
+def echo_prompt(message: str) -> str:
+    """Create an echo prompt"""
+    return f"Please process this message: {message}"
+```
+
+### SQLite Explorer
+A more complex example showing database integration:
+
+```python
+from FlashMCP import FlashMCP
+import sqlite3
+
+mcp = FlashMCP("SQLite Explorer")
+
+@mcp.resource("schema://main")
+def get_schema() -> str:
+    """Provide the database schema as a resource"""
+    conn = sqlite3.connect("database.db")
+    schema = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table'"
+    ).fetchall()
+    return "\n".join(sql[0] for sql in schema if sql[0])
+
+@mcp.tool()
+def query_data(sql: str) -> str:
+    """Execute SQL queries safely"""
+    conn = sqlite3.connect("database.db")
+    try:
+        result = conn.execute(sql).fetchall()
+        return "\n".join(str(row) for row in result)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.prompt()
+def analyze_table(table: str) -> str:
+    """Create a prompt template for analyzing tables"""
+    return f"""Please analyze this database table:
+Table: {table}
+Schema: 
+{get_schema()}
+
+What insights can you provide about the structure and relationships?"""
+```
