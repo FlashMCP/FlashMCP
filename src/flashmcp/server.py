@@ -404,7 +404,6 @@ class FlashMCP:
     async def run_stdio_async(self) -> None:
         """Run the server using stdio transport."""
         async with stdio_server() as (read_stream, write_stream):
-            logger.info(f'Starting "{self.name}"...')
             await self._mcp_server.run(
                 read_stream,
                 write_stream,
