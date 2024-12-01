@@ -5,10 +5,11 @@ import importlib.util
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 
 import typer
 from typing_extensions import Annotated
+import dotenv
 
 from ..utilities.logging import get_logger
 from . import claude
@@ -21,6 +22,17 @@ app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,  # Show help if no args provided
 )
+
+
+def _parse_env_var(env_var: str) -> Tuple[str, str]:
+    """Parse environment variable string in format KEY=VALUE."""
+    if "=" not in env_var:
+        logger.error(
+            f"Invalid environment variable format: {env_var}. Must be KEY=VALUE"
+        )
+        sys.exit(1)
+    key, value = env_var.split("=", 1)
+    return key.strip(), value.strip()
 
 
 def _build_uv_command(
@@ -304,16 +316,32 @@ def install(
             help="Additional packages to install",
         ),
     ] = [],
-    force: Annotated[
-        bool,
+    env_vars: Annotated[
+        list[str],
         typer.Option(
-            "--force",
-            "-f",
-            help="Replace existing server if one exists with the same name",
+            "--env-var",
+            "-e",
+            help="Environment variables in KEY=VALUE format",
         ),
-    ] = False,
+    ] = [],
+    env_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--env-file",
+            "-f",
+            help="Load environment variables from a .env file",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
 ) -> None:
-    """Install a FlashMCP server in the Claude desktop app."""
+    """Install a FlashMCP server in the Claude desktop app.
+
+    Environment variables are preserved once added and only updated if new values
+    are explicitly provided.
+    """
     file, server_object = _parse_file_path(file_spec)
 
     logger.debug(
@@ -324,7 +352,6 @@ def install(
             "server_object": server_object,
             "with_editable": str(with_editable) if with_editable else None,
             "with_packages": with_packages,
-            "force": force,
         },
     )
 
@@ -345,12 +372,29 @@ def install(
             )
             name = file.stem
 
+    # Process environment variables if provided
+    env_dict: Optional[Dict[str, str]] = None
+    if env_file or env_vars:
+        env_dict = {}
+        # Load from .env file if specified
+        if env_file:
+            try:
+                env_dict.update(dotenv.dotenv_values(env_file))
+            except Exception as e:
+                logger.error(f"Failed to load .env file: {e}")
+                sys.exit(1)
+
+        # Add command line environment variables
+        for env_var in env_vars:
+            key, value = _parse_env_var(env_var)
+            env_dict[key] = value
+
     if claude.update_claude_config(
         file_spec,
         name,
         with_editable=with_editable,
         with_packages=with_packages,
-        force=force,
+        env_vars=env_dict,
     ):
         logger.info(f"Successfully installed {name} in Claude app")
     else:

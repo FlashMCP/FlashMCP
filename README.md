@@ -51,9 +51,14 @@ That's it! FlashMCP handles all the complex protocol details and server manageme
   - [Prompts](#prompts)
   - [Images](#images)
   - [Context](#context)
+- [Environment Variables](#environment-variables)
+  - [Claude Desktop](#claude-desktop)
+  - [Development Mode](#development-mode)
 - [Deployment](#deployment)
   - [Development](#development)
-  - [Claude Desktop](#claude-desktop)
+    - [Environment Variables](#environment-variables-1)
+  - [Claude Desktop](#claude-desktop-1)
+    - [Environment Variables](#environment-variables-2)
 - [Examples](#examples)
   - [Echo Server](#echo-server)
   - [SQLite Explorer](#sqlite-explorer)
@@ -267,6 +272,42 @@ The Context object provides:
 - Resource access through `read_resource()`
 - Request metadata via `request_id` and `client_id`
 
+## Environment Variables
+
+MCP servers run in isolated environments and do not inherit environment variables from your system. Here's how to handle environment variables in different contexts:
+
+### Claude Desktop
+
+When installing a server in Claude Desktop, provide environment variables using the CLI:
+
+```bash
+# Single env var
+FlashMCP install server.py -e API_KEY=abc123
+
+# Multiple env vars
+FlashMCP install server.py -e API_KEY=abc123 -e OTHER_VAR=value
+
+# Load from .env file
+FlashMCP install server.py -f .env
+```
+
+Environment variables persist across reinstalls and are only updated when new values are provided:
+
+```bash
+# First install
+FlashMCP install server.py -e FOO=bar -e BAZ=123
+
+# Second install - FOO and BAZ are preserved
+FlashMCP install server.py -e NEW=value
+
+# Third install - FOO gets new value, others preserved
+FlashMCP install server.py -e FOO=newvalue
+```
+
+### Development Mode
+
+The MCP Inspector also runs servers in an isolated environment. Environment variables must be set through the Inspector UI and are not inherited from your system. The Inspector does not currently support setting environment variables via command line (see [Issue #94](https://github.com/modelcontextprotocol/inspector/issues/94)).
+
 ## Deployment
 
 The FlashMCP CLI helps you develop and deploy MCP servers.
@@ -296,6 +337,10 @@ FlashMCP dev server.py --with pandas --with numpy
 FlashMCP dev server.py --with-editable .
 ```
 
+#### Environment Variables
+
+The MCP Inspector runs servers in an isolated environment. Environment variables must be set through the Inspector UI and are not inherited from your system. The Inspector does not currently support setting environment variables via command line (see [Issue #94](https://github.com/modelcontextprotocol/inspector/issues/94)).
+
 ### Claude Desktop
 
 Install your server in Claude Desktop:
@@ -308,9 +353,6 @@ FlashMCP install server.py --name "My Server"
 
 # With dependencies
 FlashMCP install server.py --with pandas --with numpy
-
-# Replace an existing server
-FlashMCP install server.py --force
 ```
 
 The server name in Claude will be:
@@ -318,7 +360,37 @@ The server name in Claude will be:
 2. The `name` from your FlashMCP instance
 3. The filename if the server can't be imported
 
+#### Environment Variables
+
+Claude Desktop runs servers in an isolated environment. Environment variables from your system are NOT automatically available to the server - you must explicitly provide them during installation:
+
+```bash
+# Single env var
+FlashMCP install server.py -e API_KEY=abc123
+
+# Multiple env vars
+FlashMCP install server.py -e API_KEY=abc123 -e OTHER_VAR=value
+
+# Load from .env file
+FlashMCP install server.py -f .env
+```
+
+Environment variables persist across reinstalls and are only updated when new values are provided:
+
+```bash
+# First install
+FlashMCP install server.py -e FOO=bar -e BAZ=123
+
+# Second install - FOO and BAZ are preserved
+FlashMCP install server.py -e NEW=value
+
+# Third install - FOO gets new value, others preserved
+FlashMCP install server.py -e FOO=newvalue
+```
+
 ## Examples
+
+Here are a few examples of FlashMCP servers. For more, see the `examples/` directory.
 
 ### Echo Server
 A simple server demonstrating resources, tools, and prompts:
