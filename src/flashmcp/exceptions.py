@@ -15,3 +15,7 @@ class ResourceError(FlashMCPError):
 
 class ToolError(FlashMCPError):
     """Error in tool operations."""
+
+
+class InvalidSignature(Exception):
+    """Invalid signature for use with FlashMCP."""
