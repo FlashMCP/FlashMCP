@@ -16,7 +16,9 @@ FlashMCP makes building MCP servers simple and intuitive. Create tools, expose r
 ```python
 from FlashMCP import FlashMCP
 
+
 mcp = FlashMCP("Demo 🚀")
+
 
 @mcp.tool()
 def add(a: int, b: int) -> int:
@@ -24,7 +26,9 @@ def add(a: int, b: int) -> int:
     return a + b
 ```
 
-That's it! FlashMCP handles all the complex protocol details and server management, so you can focus on building great tools. It's designed to be high-level and Pythonic - in most cases, decorating a function is all you need.
+That's it! 
+
+FlashMCP handles all the complex protocol details and server management, so you can focus on building great tools. It's designed to be high-level and Pythonic - in most cases, decorating a function is all you need.
 
 
 ### Key features:
