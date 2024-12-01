@@ -11,9 +11,7 @@ A fast, Pythonic way to build Model Context Protocol servers
 
 </div>
 
-Want to connect your LLMs to data and tools? FlashMCP makes it simple! 
-
-In just a few lines of code, you can expose your functionality through a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server:
+FlashMCP makes building [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers simple and intuitive. Create tools, expose resources, and define prompts with clean, Pythonic code:
 
 ```python
 from FlashMCP import FlashMCP
