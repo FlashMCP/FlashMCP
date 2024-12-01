@@ -25,8 +25,8 @@ def get_claude_config_path() -> Path | None:
 
 
 def update_claude_config(
-    file: Path,
-    server_name: Optional[str] = None,
+    file_spec: str,
+    server_name: str,
     *,
     with_editable: Optional[Path] = None,
     with_packages: Optional[list[str]] = None,
@@ -35,9 +35,8 @@ def update_claude_config(
     """Add the MCP server to Claude's configuration.
 
     Args:
-        file: Path to the server file
-        server_name: Optional custom name for the server. If not provided,
-                    defaults to the file stem
+        file_spec: Path to the server file, optionally with :object suffix
+        server_name: Name for the server in Claude's config
         with_editable: Optional directory to install in editable mode
         with_packages: Optional list of additional packages to install
         force: If True, replace existing server with same name
@@ -55,46 +54,49 @@ def update_claude_config(
         if "mcpServers" not in config:
             config["mcpServers"] = {}
 
-        # Use provided server_name or fall back to file stem
-        name = server_name or file.stem
-        if name in config["mcpServers"]:
+        if server_name in config["mcpServers"]:
             if not force:
                 logger.warning(
-                    f"Server '{name}' already exists in Claude config. "
+                    f"Server '{server_name}' already exists in Claude config. "
                     "Use `--force` to replace.",
                     extra={"config_file": str(config_file)},
                 )
                 return False
             logger.info(
-                f"Replacing existing server '{name}' in Claude config",
+                f"Replacing existing server '{server_name}' in Claude config",
                 extra={"config_file": str(config_file)},
             )
 
         # Build uv run command
-        args = ["run"]
+        args = ["run", "--with", "FlashMCP"]
 
         if with_editable:
             args.extend(["--with-editable", str(with_editable)])
 
-        # Always include FlashMCP
-        args.extend(["--with", "FlashMCP"])
-
-        # Add additional packages
         if with_packages:
             for pkg in with_packages:
                 if pkg:
                     args.extend(["--with", pkg])
 
-        args.append(str(file))
+        # Convert file path to absolute before adding to command
+        # Split off any :object suffix first
+        if ":" in file_spec:
+            file_path, server_object = file_spec.rsplit(":", 1)
+            file_spec = f"{Path(file_path).resolve()}:{server_object}"
+        else:
+            file_spec = str(Path(file_spec).resolve())
 
-        config["mcpServers"][name] = {
+        # Add FlashMCP run command
+        args.extend(["FlashMCP", "run", file_spec])
+
+        config["mcpServers"][server_name] = {
             "command": "uv",
             "args": args,
         }
 
         config_file.write_text(json.dumps(config, indent=2))
         logger.info(
-            f"Added server '{name}' to Claude config",
+            f"Added server '{server_name}' to Claude config",
             extra={"config_file": str(config_file)},
         )
         return True

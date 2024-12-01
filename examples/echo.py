@@ -15,8 +15,13 @@ def echo_tool(text: str) -> str:
     return text
 
 
+@mcp.resource("echo://static")
+def echo_resource() -> str:
+    return "Echo!"
+
+
 @mcp.resource("echo://{text}")
-def echo_resource(text: str) -> str:
+def echo_template(text: str) -> str:
     """Echo the input text"""
     return f"Echo: {text}"
 
@@ -24,7 +29,3 @@ def echo_resource(text: str) -> str:
 @mcp.prompt("echo")
 def echo_prompt(text: str) -> str:
     return text
-
-
-if __name__ == "__main__":
-    mcp.run()

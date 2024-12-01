@@ -24,11 +24,11 @@ app = typer.Typer(
 
 
 def _build_uv_command(
-    file: Path,
+    file_spec: str,
     with_editable: Optional[Path] = None,
     with_packages: Optional[list[str]] = None,
 ) -> list[str]:
-    """Build the uv run command."""
+    """Build the uv run command that runs a FlashMCP server through FlashMCP run."""
     cmd = ["uv"]
 
     cmd.extend(["run", "--with", "FlashMCP"])
@@ -41,7 +41,8 @@ def _build_uv_command(
             if pkg:
                 cmd.extend(["--with", pkg])
 
-    cmd.append(str(file))
+    # Add FlashMCP run command
+    cmd.extend(["FlashMCP", "run", file_spec])
     return cmd
 
 
@@ -89,7 +90,7 @@ def _import_server(file: Path, server_object: Optional[str] = None):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    # If no object specified, try __main__ block
+    # If no object specified, try common server names
     if not server_object:
         # Look for the most common server object names
         for name in ["mcp", "server", "app"]:
@@ -97,7 +98,9 @@ def _import_server(file: Path, server_object: Optional[str] = None):
                 return getattr(module, name)
 
         logger.error(
-            f"No server object found in {file}. Please specify the object name with file:object syntax.",
+            f"No server object found in {file}. Please either:\n"
+            "1. Use a standard variable name (mcp, server, or app)\n"
+            "2. Specify the object name with file:object syntax",
             extra={"file": str(file)},
         )
         sys.exit(1)
@@ -178,7 +181,7 @@ def dev(
     )
 
     try:
-        uv_cmd = _build_uv_command(file, with_editable, with_packages)
+        uv_cmd = _build_uv_command(file_spec, with_editable, with_packages)
         # Run the MCP Inspector command
         process = subprocess.run(
             ["npx", "@modelcontextprotocol/inspector"] + uv_cmd,
@@ -229,7 +232,12 @@ def run(
         ),
     ] = None,
 ) -> None:
-    """Run a FlashMCP server."""
+    """Run a FlashMCP server.
+
+    The server can be specified in two ways:
+    1. Module approach: server.py - runs the module directly, expecting a server.run() call
+    2. Import approach: server.py:app - imports and runs the specified server object
+    """
     file, server_object = _parse_file_path(file_spec)
 
     logger.debug(
@@ -338,7 +346,7 @@ def install(
             name = file.stem
 
     if claude.update_claude_config(
-        file,
+        file_spec,
         name,
         with_editable=with_editable,
         with_packages=with_packages,
@@ -348,7 +356,3 @@ def install(
     else:
         print(f"Failed to install {name} in Claude app")
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    app()

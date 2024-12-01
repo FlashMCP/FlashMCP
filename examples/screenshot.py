@@ -26,7 +26,3 @@ def take_screenshot() -> Image:
     # if the file exceeds ~1MB, it will be rejected by Claude
     screenshot.convert("RGB").save(buffer, format="JPEG", quality=60, optimize=True)
     return Image(data=buffer.getvalue(), format="jpeg")
-
-
-if __name__ == "__main__":
-    mcp.run()
