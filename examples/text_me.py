@@ -19,6 +19,8 @@ class SurgeSettings(BaseSettings):
     api_key: str
     account_id: str
     my_phone_number: str
+    my_first_name: str
+    my_last_name: str
 
 
 # Create server
@@ -26,21 +28,28 @@ mcp = FlashMCP("Text Me")
 surge_settings = SurgeSettings()  # type: ignore
 
 
-@mcp.tool()
+@mcp.tool(
+    name="text_me",
+    description="Send a text message to the number set as SURGE_MY_PHONE_NUMBER in the .env file",
+)
 def text_me(text_content: str) -> str:
     """Send a text message to a phone number"""
     with httpx.Client() as client:
         response = client.post(
             "https://api.surgemsg.com/messages",
             headers={
-                "Authorization": surge_settings.api_key,
+                "Authorization": f"Bearer {surge_settings.api_key}",
                 "Surge-Account": surge_settings.account_id,
                 "Content-Type": "application/json",
             },
             json={
                 "body": text_content,
                 "conversation": {
-                    "contact": {"phone_number": surge_settings.my_phone_number}
+                    "contact": {
+                        "first_name": surge_settings.my_first_name,
+                        "last_name": surge_settings.my_last_name,
+                        "phone_number": surge_settings.my_phone_number,
+                    }
                 },
             },
         )
