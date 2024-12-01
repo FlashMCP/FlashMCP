@@ -7,11 +7,11 @@
 [![Tests](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml/badge.svg)](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml)
 [![License](https://img.shields.io/github/license/jlowin/FlashMCP.svg)](https://github.com/jlowin/FlashMCP/blob/main/LICENSE)
 
-A fast, Pythonic way to build Model Context Protocol servers
+A fast, Pythonic way to build [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers
 
 </div>
 
-FlashMCP makes building [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers simple and intuitive. Create tools, expose resources, and define prompts with clean, Pythonic code:
+FlashMCP makes building MCP servers simple and intuitive. Create tools, expose resources, and define prompts with clean, Pythonic code:
 
 ```python
 from FlashMCP import FlashMCP
@@ -26,15 +26,17 @@ def add(a: int, b: int) -> int:
 
 That's it! FlashMCP handles all the complex protocol details and server management, so you can focus on building great tools. It's designed to be high-level and Pythonic - in most cases, decorating a function is all you need.
 
-🚨 🚧 🏗️ *FlashMCP is under active development, as is the MCP specification itself. Core features are working but some advanced capabilities are still in progress.* 
 
-Key features:
+### Key features:
 * **Fast**: High-level interface means less code and faster development
 * **Simple**: Build MCP servers with minimal boilerplate
 * **Pythonic**: Feels natural to Python developers
 * **Complete***: FlashMCP aims to provide a full implementation of the core MCP specification
 
-(\*emphasis on *aims* during construction)
+(\*emphasis on *aims*)
+
+🚨 🚧 🏗️ *FlashMCP is under active development, as is the MCP specification itself. Core features are working but some advanced capabilities are still in progress.* 
+
 
 <!-- omit in toc -->
 ## Table of Contents
@@ -107,19 +109,21 @@ FlashMCP install server.py
 FlashMCP dev server.py
 ```
 
-![MCP Inspector](docs/images/mcp-inspector.png)
+![MCP Inspector](/docs/assets/demo-inspector.png)
 
 ## What is MCP?
 
 The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) lets you build servers that expose data and functionality to LLM applications in a secure, standardized way. Think of it like a web API, but specifically designed for LLM interactions. MCP servers can:
 
-- Expose data through **Resources** (like GET endpoints)
-- Provide functionality through **Tools** (like POST endpoints)
+- Expose data through **Resources** (think of these sort of like GET endpoints; they are used to load information into the LLM's context)
+- Provide functionality through **Tools** (sort of like POST endpoints; they are used to execute code or otherwise produce a side effect)
 - Define interaction patterns through **Prompts** (reusable templates for LLM interactions)
+- And more!
+
+There is a low-level [Python SDK](https://github.com/modelcontextprotocol/python-sdk) available for implementing the protocol directly, but FlashMCP aims to make that easier by providing a high-level, Pythonic interface.
 
 ## Core Concepts
 
-*Note: All code examples below assume you've created a FlashMCP server instance called `mcp`.*
 
 ### Server
 
@@ -134,6 +138,7 @@ mcp = FlashMCP("My App")
 # Configure host/port for HTTP transport (optional)
 mcp = FlashMCP("My App", host="localhost", port=8000)
 ```
+*Note: All of the following code examples assume you've created a FlashMCP server instance called `mcp`, as shown above.*
 
 ### Resources
 
