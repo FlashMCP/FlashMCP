@@ -53,7 +53,11 @@ class Settings(BaseSettings):
     For example, FASTMCP_DEBUG=true will set debug=True.
     """
 
-    model_config: SettingsConfigDict = SettingsConfigDict(env_prefix="FASTMCP_")
+    model_config: SettingsConfigDict = SettingsConfigDict(
+        env_prefix="FASTMCP_",
+        env_file=".env",
+        extra="ignore",
+    )
 
     # Server settings
     debug: bool = False

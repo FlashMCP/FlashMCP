@@ -13,7 +13,7 @@ from typing_extensions import Annotated
 from ..utilities.logging import get_logger
 from . import claude
 
-logger = get_logger(__name__)
+logger = get_logger("cli")
 
 app = typer.Typer(
     name="FlashMCP",
@@ -352,7 +352,7 @@ def install(
         with_packages=with_packages,
         force=force,
     ):
-        print(f"Successfully installed {name} in Claude app")
+        logger.info(f"Successfully installed {name} in Claude app")
     else:
-        print(f"Failed to install {name} in Claude app")
+        logger.error(f"Failed to install {name} in Claude app")
         sys.exit(1)

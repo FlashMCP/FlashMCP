@@ -3,15 +3,17 @@
 import logging
 from typing import Literal
 
+from rich.logging import RichHandler
+
 
 def get_logger(name: str) -> logging.Logger:
     """Get a logger nested under FlashMCP namespace.
 
     Args:
-        name: The name of the logger, which will be prefixed with 'FlashMCP.'
+        name: the name of the logger, which will be prefixed with 'FlashMCP.'
 
     Returns:
-        A configured logger instance
+        a configured logger instance
     """
     return logging.getLogger(f"FlashMCP.{name}")
 
@@ -22,9 +24,8 @@ def configure_logging(
     """Configure logging for FlashMCP.
 
     Args:
-        level: The log level to use
+        level: the log level to use
     """
     logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        level=level, format="%(message)s", handlers=[RichHandler(rich_tracebacks=True)]
     )
