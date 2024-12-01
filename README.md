@@ -74,18 +74,19 @@ FlashMCP handles all the complex protocol details and server management, so you 
 
 ## Installation
 
+We strongly recommend installing FlashMCP with [uv](https://docs.astral.sh/uv/), as it is required for deploying servers:
+
 ```bash
-# We strongly recommend installing with uv
-brew install uv  # on macOS
 uv pip install FlashMCP
 ```
 
-Or with pip:
+Note: on macOS, uv may need to be installed with Homebrew (`brew install uv`) in order to make it available to the Claude Desktop app.
+
+Alternatively, to use the SDK without deploying, you may use pip:
+
 ```bash
 pip install FlashMCP
 ```
-
-See the [Contributing](#contributing) section for information on how to contribute to FlashMCP.
 
 ## Quickstart
 
