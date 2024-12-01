@@ -11,9 +11,11 @@ The fast, Pythonic way to build [Model Context Protocol (MCP)](https://modelcont
 
 </div>
 
-FlashMCP makes building MCP servers simple and intuitive. Create tools, expose resources, and define prompts with clean, Pythonic code:
+MCP servers are a new, standardized way to provide context and tools to your LLMs, and FlashMCP makes building MCP servers simple and intuitive. Create tools, expose resources, and define prompts with clean, Pythonic code:
 
 ```python
+# demo.py
+
 from FlashMCP import FlashMCP
 
 
@@ -26,7 +28,11 @@ def add(a: int, b: int) -> int:
     return a + b
 ```
 
-That's it! 
+That's it! Give Claude access to the server by running:
+
+```bash
+FlashMCP install demo.py
+```
 
 FlashMCP handles all the complex protocol details and server management, so you can focus on building great tools. It's designed to be high-level and Pythonic - in most cases, decorating a function is all you need.
 
