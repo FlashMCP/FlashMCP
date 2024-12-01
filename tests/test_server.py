@@ -1,16 +1,18 @@
+import base64
+from pathlib import Path
+from typing import TYPE_CHECKING, Union
+
+import pytest
+from mcp.shared.exceptions import McpError
 from mcp.shared.memory import (
     create_connected_server_and_client_session as client_session,
 )
-from mcp.shared.exceptions import McpError
-from FlashMCP import FlashMCP, Context
+from mcp.types import ImageContent, TextContent
+
+from FlashMCP import Context, FlashMCP
+from FlashMCP.prompts.base import EmbeddedResource, Message, UserMessage
 from FlashMCP.resources import FileResource, FunctionResource
 from FlashMCP.utilities.types import Image
-from mcp.types import TextContent, ImageContent
-from FlashMCP.prompts.base import Message, UserMessage, TextContent, EmbeddedResource
-import pytest
-from pathlib import Path
-import base64
-from typing import Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from FlashMCP import Context
@@ -35,7 +37,7 @@ class TestServer:
 
         with pytest.raises(TypeError, match="The @tool decorator was used incorrectly"):
 
-            @mcp.tool  # Missing parentheses
+            @mcp.tool  # Missing parentheses #type: ignore
             def add(x: int, y: int) -> int:
                 return x + y
 
@@ -55,7 +57,7 @@ class TestServer:
             TypeError, match="The @resource decorator was used incorrectly"
         ):
 
-            @mcp.resource  # Missing parentheses
+            @mcp.resource  # Missing parentheses #type: ignore
             def get_data(x: str) -> str:
                 return f"Data: {x}"
 

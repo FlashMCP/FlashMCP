@@ -1,7 +1,8 @@
 import logging
+from typing import Optional
+
 import pytest
 from pydantic import BaseModel
-from typing import Optional
 
 from FlashMCP.exceptions import ToolError
 from FlashMCP.tools import ToolManager
@@ -69,7 +70,7 @@ class TestAddTools:
     def test_add_invalid_tool(self):
         manager = ToolManager()
         with pytest.raises(AttributeError):
-            manager.add_tool(1)
+            manager.add_tool(1)  # type: ignore
 
     def test_add_lambda(self):
         manager = ToolManager()
@@ -185,7 +186,7 @@ class TestContextHandling:
             return str(x)
 
         manager = ToolManager()
-        tool = manager.add_tool(tool_with_context)
+        manager.add_tool(tool_with_context)
 
         mcp = FlashMCP()
         ctx = mcp.get_context()
@@ -201,7 +202,7 @@ class TestContextHandling:
             return str(x)
 
         manager = ToolManager()
-        tool = manager.add_tool(async_tool)
+        manager.add_tool(async_tool)
 
         mcp = FlashMCP()
         ctx = mcp.get_context()
@@ -216,7 +217,7 @@ class TestContextHandling:
             return str(x)
 
         manager = ToolManager()
-        tool = manager.add_tool(tool_with_context)
+        manager.add_tool(tool_with_context)
         # Should not raise an error when context is not provided
         result = await manager.call_tool("tool_with_context", {"x": 42})
         assert result == "42"
@@ -229,7 +230,7 @@ class TestContextHandling:
             raise ValueError("Test error")
 
         manager = ToolManager()
-        tool = manager.add_tool(tool_with_context)
+        manager.add_tool(tool_with_context)
 
         mcp = FlashMCP()
         ctx = mcp.get_context()

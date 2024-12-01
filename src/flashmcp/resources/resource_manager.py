@@ -2,7 +2,7 @@
 
 from typing import Callable, Dict, Optional, Union
 
-from pydantic.networks import _BaseUrl
+from pydantic import AnyUrl
 
 from FlashMCP.resources.base import Resource
 from FlashMCP.resources.templates import ResourceTemplate
@@ -64,7 +64,7 @@ class ResourceManager:
         self._templates[template.uri_template] = template
         return template
 
-    async def get_resource(self, uri: Union[_BaseUrl, str]) -> Optional[Resource]:
+    async def get_resource(self, uri: Union[AnyUrl, str]) -> Optional[Resource]:
         """Get resource by URI, checking concrete resources first, then templates."""
         uri_str = str(uri)
         logger.debug("Getting resource", extra={"uri": uri_str})

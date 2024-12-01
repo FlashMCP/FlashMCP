@@ -1,6 +1,5 @@
 """Concrete resource implementations."""
 
-import pydantic_core
 import asyncio
 import json
 from pathlib import Path
@@ -8,6 +7,7 @@ from typing import Any, Callable, Union
 
 import httpx
 import pydantic.json
+import pydantic_core
 from pydantic import Field
 
 from FlashMCP.resources.base import Resource
