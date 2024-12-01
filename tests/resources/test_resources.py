@@ -46,7 +46,7 @@ class TestResourceValidation:
             uri="resource://my-resource",
             fn=dummy_func,
         )
-        assert resource.name == "my-resource"
+        assert resource.name == "resource://my-resource"
 
     def test_resource_name_validation(self):
         """Test name validation."""
