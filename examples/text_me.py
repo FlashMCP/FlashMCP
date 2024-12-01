@@ -1,11 +1,14 @@
 # /// script
 # dependencies = ["FlashMCP"]
+# ///
 
 """
 FlashMCP Echo Server
 """
 
+from typing import Annotated
 import httpx
+from pydantic import BeforeValidator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from FlashMCP import FlashMCP
@@ -18,22 +21,21 @@ class SurgeSettings(BaseSettings):
 
     api_key: str
     account_id: str
-    my_phone_number: str
+    my_phone_number: Annotated[
+        str, BeforeValidator(lambda v: "+" + v if not v.startswith("+") else v)
+    ]
     my_first_name: str
     my_last_name: str
 
 
 # Create server
-mcp = FlashMCP("Text Me")
+mcp = FlashMCP("Text me")
 surge_settings = SurgeSettings()  # type: ignore
 
 
-@mcp.tool(
-    name="text_me",
-    description="Send a text message to the number set as SURGE_MY_PHONE_NUMBER in the .env file",
-)
+@mcp.tool(name="textme", description="Send a text message to me")
 def text_me(text_content: str) -> str:
-    """Send a text message to a phone number"""
+    """Send a text message to a phone number via https://surgemsg.com/"""
     with httpx.Client() as client:
         response = client.post(
             "https://api.surgemsg.com/messages",
@@ -54,4 +56,4 @@ def text_me(text_content: str) -> str:
             },
         )
         response.raise_for_status()
-        return response.json()
+        return f"Message sent: {text_content}"
