@@ -98,6 +98,8 @@ pip install FlashMCP
 Let's create a simple MCP server that exposes a calculator tool and some data:
 
 ```python
+# server.py
+
 from FlashMCP import FlashMCP
 
 
@@ -119,14 +121,12 @@ def get_greeting(name: str) -> str:
     return f"Hello, {name}!"
 ```
 
-To use this server, you have two options:
-
-1. Install it in [Claude Desktop](https://claude.ai/download):
+You can install this server in [Claude Desktop](https://claude.ai/download) and interact with it right away by running:
 ```bash
 FlashMCP install server.py
 ```
 
-2. Test it with the MCP Inspector:
+Alternatively, you can test it with the MCP Inspector:
 ```bash
 FlashMCP dev server.py
 ```
