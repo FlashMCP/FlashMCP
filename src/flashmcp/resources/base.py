@@ -8,6 +8,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    FileUrl,
     ValidationInfo,
     field_validator,
 )
@@ -33,6 +34,9 @@ class Resource(BaseModel, abc.ABC):
     @field_validator("uri", mode="before")
     def validate_uri(cls, uri: AnyUrl | str) -> AnyUrl:
         if isinstance(uri, str):
+            # AnyUrl doesn't support triple-slashes, but files do ("file:///absolute/path")
+            if uri.startswith("file://"):
+                return FileUrl(uri)
             return AnyUrl(uri)
         return uri
 
