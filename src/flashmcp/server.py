@@ -9,6 +9,7 @@ from itertools import chain
 from typing import Any, Callable, Dict, Literal, Sequence
 
 import pydantic_core
+from pydantic import Field
 import uvicorn
 from mcp.server import Server as MCPServer
 from mcp.server.sse import SseServerTransport
@@ -76,6 +77,11 @@ class Settings(BaseSettings):
     # prompt settings
     warn_on_duplicate_prompts: bool = True
 
+    dependencies: list[str] = Field(
+        default_factory=list,
+        description="List of dependencies to install in the server environment",
+    )
+
 
 class FlashMCP:
     def __init__(self, name: str | None = None, **settings: Any):
@@ -90,6 +96,7 @@ class FlashMCP:
         self._prompt_manager = PromptManager(
             warn_on_duplicate_prompts=self.settings.warn_on_duplicate_prompts
         )
+        self.dependencies = self.settings.dependencies
 
         # Set up MCP protocol handlers
         self._setup_handlers()

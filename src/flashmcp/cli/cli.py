@@ -193,6 +193,11 @@ def dev(
     )
 
     try:
+        # Import server to get dependencies
+        server = _import_server(file, server_object)
+        if hasattr(server, "dependencies"):
+            with_packages = list(set(with_packages + server.dependencies))
+
         uv_cmd = _build_uv_command(file_spec, with_editable, with_packages)
         # Run the MCP Inspector command
         process = subprocess.run(
@@ -232,23 +237,16 @@ def run(
             help="Transport protocol to use (stdio or sse)",
         ),
     ] = None,
-    with_editable: Annotated[
-        Optional[Path],
-        typer.Option(
-            "--with-editable",
-            "-e",
-            help="Directory containing pyproject.toml to install in editable mode",
-            exists=True,
-            file_okay=False,
-            resolve_path=True,
-        ),
-    ] = None,
 ) -> None:
     """Run a FlashMCP server.
 
     The server can be specified in two ways:
     1. Module approach: server.py - runs the module directly, expecting a server.run() call
     2. Import approach: server.py:app - imports and runs the specified server object
+
+    Note: This command runs the server directly. You are responsible for ensuring
+    all dependencies are available. For dependency management, use FlashMCP install
+    or FlashMCP dev instead.
     """
     file, server_object = _parse_file_path(file_spec)
 
@@ -258,7 +256,6 @@ def run(
             "file": str(file),
             "server_object": server_object,
             "transport": transport,
-            "with_editable": str(with_editable) if with_editable else None,
         },
     )
 
@@ -361,6 +358,7 @@ def install(
 
     # Try to import server to get its name, but fall back to file name if dependencies missing
     name = server_name
+    server = None
     if not name:
         try:
             server = _import_server(file, server_object)
@@ -371,6 +369,11 @@ def install(
                 extra={"error": str(e)},
             )
             name = file.stem
+
+    # Get server dependencies if available
+    server_dependencies = getattr(server, "dependencies", []) if server else []
+    if server_dependencies:
+        with_packages = list(set(with_packages + server_dependencies))
 
     # Process environment variables if provided
     env_dict: Optional[Dict[str, str]] = None
