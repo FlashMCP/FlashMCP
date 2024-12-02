@@ -41,14 +41,31 @@ def update_claude_config(
         with_packages: Optional list of additional packages to install
         env_vars: Optional dictionary of environment variables. These are merged with
             any existing variables, with new values taking precedence.
+
+    Raises:
+        RuntimeError: If Claude Desktop's config directory is not found, indicating
+            Claude Desktop may not be installed or properly set up.
     """
     config_dir = get_claude_config_path()
     if not config_dir:
-        return False
+        raise RuntimeError(
+            "Claude Desktop config directory not found. Please ensure Claude Desktop "
+            "is installed and has been run at least once to initialize its configuration."
+        )
 
     config_file = config_dir / "claude_desktop_config.json"
     if not config_file.exists():
-        return False
+        try:
+            config_file.write_text("{}")
+        except Exception as e:
+            logger.error(
+                "Failed to create Claude config file",
+                extra={
+                    "error": str(e),
+                    "config_file": str(config_file),
+                },
+            )
+            return False
 
     try:
         config = json.loads(config_file.read_text())
