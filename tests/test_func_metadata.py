@@ -1,18 +1,3 @@
-"""
-FlashMCP Complex inputs Example
-
-This can be used to verify that the JSON schema and data
-parsing work with complex inputs like lists, nulls, and sub-models.
-
-Suggested usage:
-- Set up claude desktop with it
-- Ask it to print out the schema for you
-- Ask it to try out the endpoint without supplying any of the optional args
-- Confirm it's okay
-- Ask it to try out the endpoint with the optional args explicitly set
-- Confirm it's okay
-"""
-
 from pydantic import BaseModel, Field
 from typing import Annotated
 import annotated_types
