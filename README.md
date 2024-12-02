@@ -157,9 +157,6 @@ from FlashMCP import FlashMCP
 # Create a named server
 mcp = FlashMCP("My App")
 
-# Configure host/port for HTTP transport (optional)
-mcp = FlashMCP("My App", host="localhost", port=8000)
-
 # Specify dependencies for deployment and development
 mcp = FlashMCP("My App", dependencies=["pandas", "numpy"])
 ```
