@@ -1,7 +1,7 @@
 """Tests for the FlashMCP CLI."""
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from typer.testing import CliRunner
@@ -19,11 +19,13 @@ def mock_config(tmp_path):
 
 
 @pytest.fixture
-def mock_server_file(tmp_path):
-    """Create a mock server file."""
+def server_file(tmp_path):
+    """Create a server file."""
     server_file = tmp_path / "server.py"
     server_file.write_text(
-        "from FlashMCP import Server\n" "server = Server(name='test')\n"
+        """from FlashMCP import FlashMCP
+mcp = FlashMCP("test")
+"""
     )
     return server_file
 
@@ -67,22 +69,16 @@ def test_parse_env_var():
         ),
     ],
 )
-def test_install_with_env_vars(mock_config, mock_server_file, args, expected_env):
+def test_install_with_env_vars(mock_config, server_file, args, expected_env):
     """Test installing with environment variables."""
     runner = CliRunner()
 
-    with (
-        patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path,
-        patch("FlashMCP.cli.cli._import_server") as mock_import,
-    ):
+    with patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path:
         mock_config_path.return_value = mock_config.parent
-        mock_server = Mock()
-        mock_server.name = "test"  # Set name as an attribute
-        mock_import.return_value = mock_server
 
         result = runner.invoke(
             app,
-            ["install", str(mock_server_file)] + args,
+            ["install", str(server_file)] + args,
         )
 
         assert result.exit_code == 0
@@ -95,22 +91,16 @@ def test_install_with_env_vars(mock_config, mock_server_file, args, expected_env
         assert server["env"] == expected_env
 
 
-def test_install_with_env_file(mock_config, mock_server_file, mock_env_file):
+def test_install_with_env_file(mock_config, server_file, mock_env_file):
     """Test installing with environment variables from a file."""
     runner = CliRunner()
 
-    with (
-        patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path,
-        patch("FlashMCP.cli.cli._import_server") as mock_import,
-    ):
+    with patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path:
         mock_config_path.return_value = mock_config.parent
-        mock_server = Mock()
-        mock_server.name = "test"  # Set name as an attribute
-        mock_import.return_value = mock_server
 
         result = runner.invoke(
             app,
-            ["install", str(mock_server_file), "--env-file", str(mock_env_file)],
+            ["install", str(server_file), "--env-file", str(mock_env_file)],
         )
 
         assert result.exit_code == 0
@@ -123,7 +113,7 @@ def test_install_with_env_file(mock_config, mock_server_file, mock_env_file):
         assert server["env"] == {"FOO": "bar", "BAZ": "123"}
 
 
-def test_install_preserves_existing_env_vars(mock_config, mock_server_file):
+def test_install_preserves_existing_env_vars(mock_config, server_file):
     """Test that installing preserves existing environment variables."""
     # Set up initial config with env vars
     config = {
@@ -136,7 +126,7 @@ def test_install_preserves_existing_env_vars(mock_config, mock_server_file):
                     "FlashMCP",
                     "FlashMCP",
                     "run",
-                    str(mock_server_file),
+                    str(server_file),
                 ],
                 "env": {"FOO": "bar", "BAZ": "123"},
             }
@@ -146,19 +136,13 @@ def test_install_preserves_existing_env_vars(mock_config, mock_server_file):
 
     runner = CliRunner()
 
-    with (
-        patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path,
-        patch("FlashMCP.cli.cli._import_server") as mock_import,
-    ):
+    with patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path:
         mock_config_path.return_value = mock_config.parent
-        mock_server = Mock()
-        mock_server.name = "test"  # Set name as an attribute
-        mock_import.return_value = mock_server
 
         # Install with a new env var
         result = runner.invoke(
             app,
-            ["install", str(mock_server_file), "--env-var", "NEW=value"],
+            ["install", str(server_file), "--env-var", "NEW=value"],
         )
 
         assert result.exit_code == 0
@@ -169,7 +153,7 @@ def test_install_preserves_existing_env_vars(mock_config, mock_server_file):
         assert server["env"] == {"FOO": "bar", "BAZ": "123", "NEW": "value"}
 
 
-def test_install_updates_existing_env_vars(mock_config, mock_server_file):
+def test_install_updates_existing_env_vars(mock_config, server_file):
     """Test that installing updates existing environment variables."""
     # Set up initial config with env vars
     config = {
@@ -182,7 +166,7 @@ def test_install_updates_existing_env_vars(mock_config, mock_server_file):
                     "FlashMCP",
                     "FlashMCP",
                     "run",
-                    str(mock_server_file),
+                    str(server_file),
                 ],
                 "env": {"FOO": "bar", "BAZ": "123"},
             }
@@ -192,19 +176,13 @@ def test_install_updates_existing_env_vars(mock_config, mock_server_file):
 
     runner = CliRunner()
 
-    with (
-        patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path,
-        patch("FlashMCP.cli.cli._import_server") as mock_import,
-    ):
+    with patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path:
         mock_config_path.return_value = mock_config.parent
-        mock_server = Mock()
-        mock_server.name = "test"  # Set name as an attribute
-        mock_import.return_value = mock_server
 
         # Update an existing env var
         result = runner.invoke(
             app,
-            ["install", str(mock_server_file), "--env-var", "FOO=newvalue"],
+            ["install", str(server_file), "--env-var", "FOO=newvalue"],
         )
 
         assert result.exit_code == 0
@@ -213,3 +191,101 @@ def test_install_updates_existing_env_vars(mock_config, mock_server_file):
         config = json.loads(mock_config.read_text())
         server = next(iter(config["mcpServers"].values()))
         assert server["env"] == {"FOO": "newvalue", "BAZ": "123"}
+
+
+def test_server_dependencies(mock_config, server_file):
+    """Test that server dependencies are correctly handled."""
+    # Create a server file with dependencies
+    server_file = server_file.parent / "server_with_deps.py"
+    server_file.write_text(
+        """from FlashMCP import FlashMCP
+mcp = FlashMCP("test", dependencies=["pandas", "numpy"])
+"""
+    )
+
+    runner = CliRunner()
+
+    with patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path:
+        mock_config_path.return_value = mock_config.parent
+
+        result = runner.invoke(app, ["install", str(server_file)])
+
+        assert result.exit_code == 0
+
+        # Read the config file and check dependencies were added as --with args
+        config = json.loads(mock_config.read_text())
+        server = next(iter(config["mcpServers"].values()))
+        assert "--with" in server["args"]
+        assert "pandas" in server["args"]
+        assert "numpy" in server["args"]
+
+
+def test_server_dependencies_empty(mock_config, server_file):
+    """Test that server with no dependencies works correctly."""
+    runner = CliRunner()
+
+    with patch("FlashMCP.cli.claude.get_claude_config_path") as mock_config_path:
+        mock_config_path.return_value = mock_config.parent
+
+        result = runner.invoke(app, ["install", str(server_file)])
+
+        assert result.exit_code == 0
+
+        # Read the config file and check only FlashMCP is in --with args
+        config = json.loads(mock_config.read_text())
+        server = next(iter(config["mcpServers"].values()))
+        assert server["args"].count("--with") == 1
+        assert "FlashMCP" in server["args"]
+
+
+def test_dev_with_dependencies(mock_config, server_file):
+    """Test that dev command handles dependencies correctly."""
+    # Create a server file with dependencies
+    server_file = server_file.parent / "server_with_deps.py"
+    server_file.write_text(
+        """from FlashMCP import FlashMCP
+mcp = FlashMCP("test", dependencies=["pandas", "numpy"])
+"""
+    )
+
+    runner = CliRunner()
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0  # Set successful return code
+        result = runner.invoke(app, ["dev", str(server_file)])
+        assert result.exit_code == 0
+
+        # Check that dependencies were passed to subprocess.run
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "npx" in args
+        assert "@modelcontextprotocol/inspector" in args
+        assert "uv" in args
+        assert "run" in args
+        assert "--with" in args
+        assert "pandas" in args
+        assert "numpy" in args
+        assert "FlashMCP" in args
+
+
+def test_run_with_dependencies(mock_config, server_file):
+    """Test that run command does not handle dependencies."""
+    # Create a server file with dependencies
+    server_file = server_file.parent / "server_with_deps.py"
+    server_file.write_text(
+        """from FlashMCP import FlashMCP
+mcp = FlashMCP("test", dependencies=["pandas", "numpy"])
+
+if __name__ == "__main__":
+    mcp.run()
+"""
+    )
+
+    runner = CliRunner()
+
+    with patch("subprocess.run") as mock_run:
+        result = runner.invoke(app, ["run", str(server_file)])
+        assert result.exit_code == 0
+
+        # Run command should not call subprocess.run
+        mock_run.assert_not_called()

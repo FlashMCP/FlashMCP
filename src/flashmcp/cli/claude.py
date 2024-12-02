@@ -68,15 +68,19 @@ def update_claude_config(
                 env_vars = existing_env
 
         # Build uv run command
-        args = ["run", "--with", "FlashMCP"]
+        args = ["run"]
+
+        # Collect all packages in a set to deduplicate
+        packages = {"FlashMCP"}
+        if with_packages:
+            packages.update(pkg for pkg in with_packages if pkg)
+
+        # Add all packages with --with
+        for pkg in sorted(packages):
+            args.extend(["--with", pkg])
 
         if with_editable:
             args.extend(["--with-editable", str(with_editable)])
-
-        if with_packages:
-            for pkg in with_packages:
-                if pkg:
-                    args.extend(["--with", pkg])
 
         # Convert file path to absolute before adding to command
         # Split off any :object suffix first

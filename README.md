@@ -62,15 +62,20 @@ FlashMCP handles all the complex protocol details and server management, so you 
   - [Prompts](#prompts)
   - [Images](#images)
   - [Context](#context)
-- [Deployment](#deployment)
-  - [Development](#development)
-    - [Environment Variables](#environment-variables)
-  - [Claude Desktop](#claude-desktop)
-    - [Environment Variables](#environment-variables-1)
+- [Running Your Server](#running-your-server)
+  - [Development Mode (Recommended for Building \& Testing)](#development-mode-recommended-for-building--testing)
+  - [Claude Desktop Integration (For Regular Use)](#claude-desktop-integration-for-regular-use)
+  - [Direct Execution (For Advanced Use Cases)](#direct-execution-for-advanced-use-cases)
+  - [Server Object Names](#server-object-names)
 - [Examples](#examples)
   - [Echo Server](#echo-server)
   - [SQLite Explorer](#sqlite-explorer)
 - [Contributing](#contributing)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation-1)
+  - [Testing](#testing)
+  - [Formatting](#formatting)
+  - [Opening a Pull Request](#opening-a-pull-request)
 
 ## Installation
 
@@ -154,8 +159,10 @@ mcp = FlashMCP("My App")
 
 # Configure host/port for HTTP transport (optional)
 mcp = FlashMCP("My App", host="localhost", port=8000)
+
+# Specify dependencies for deployment and development
+mcp = FlashMCP("My App", dependencies=["pandas", "numpy"])
 ```
-*Note: All of the following code examples assume you've created a FlashMCP server instance called `mcp`, as shown above.*
 
 ### Resources
 
@@ -284,84 +291,101 @@ The Context object provides:
 - Resource access through `read_resource()`
 - Request metadata via `request_id` and `client_id`
 
-## Deployment
+## Running Your Server
 
-The FlashMCP CLI helps you develop and deploy MCP servers.
+There are three main ways to use your FlashMCP server, each suited for different stages of development:
 
-Note that for all deployment commands, you are expected to provide the fully qualified path to your server object. For example, if you have a file `server.py` that contains a FlashMCP server named `my_server`, you would provide `path/to/server.py:my_server`.
+### Development Mode (Recommended for Building & Testing)
 
-If your server variable has one of the standard names (`mcp`, `server`, or `app`), you can omit the server name from the path and just provide the file: `path/to/server.py`.
+The fastest way to test and debug your server is with the MCP Inspector:
 
-### Development
-
-Test and debug your server with the MCP Inspector:
 ```bash
-# Provide the fully qualified path to your server
-FlashMCP dev server.py:my_mcp_server
-
-# Or just the file if your server is named 'mcp', 'server', or 'app'
 FlashMCP dev server.py
 ```
 
-Your server is run in an isolated environment, so you'll need to indicate any dependencies with the `--with` flag. FlashMCP is automatically included. If you are working on a uv project, you can use the `--with-editable` flag to mount your current directory:   
+This launches a web interface where you can:
+- Test your tools and resources interactively
+- See detailed logs and error messages
+- Monitor server performance
+- Set environment variables for testing
+
+During development, you can:
+- Add dependencies with `--with`: 
+  ```bash
+  FlashMCP dev server.py --with pandas --with numpy
+  ```
+- Mount your local code for live updates:
+  ```bash
+  FlashMCP dev server.py --with-editable .
+  ```
+
+### Claude Desktop Integration (For Regular Use)
+
+Once your server is ready, install it in Claude Desktop to use it with Claude:
 
 ```bash
-# With additional packages
-FlashMCP dev server.py --with pandas --with numpy
-
-# Using your project's dependencies and up-to-date code
-FlashMCP dev server.py --with-editable .
-```
-
-#### Environment Variables
-
-The MCP Inspector runs servers in an isolated environment. Environment variables must be set through the Inspector UI and are not inherited from your system. The Inspector does not currently support setting environment variables via command line (see [Issue #94](https://github.com/modelcontextprotocol/inspector/issues/94)).
-
-### Claude Desktop
-
-Install your server in Claude Desktop:
-```bash
-# Basic usage (name is taken from your FlashMCP instance)
 FlashMCP install server.py
-
-# With a custom name
-FlashMCP install server.py --name "My Server"
-
-# With dependencies
-FlashMCP install server.py --with pandas --with numpy
 ```
 
-The server name in Claude will be:
-1. The `--name` parameter if provided
-2. The `name` from your FlashMCP instance
-3. The filename if the server can't be imported
+Your server will run in an isolated environment with:
+- Automatic installation of dependencies specified in your FlashMCP instance:
+  ```python
+  mcp = FlashMCP("My App", dependencies=["pandas", "numpy"])
+  ```
+- Custom naming via `--name`:
+  ```bash
+  FlashMCP install server.py --name "My Analytics Server"
+  ```
+- Environment variable management:
+  ```bash
+  # Set variables individually
+  FlashMCP install server.py -e API_KEY=abc123 -e DB_URL=postgres://...
+  
+  # Or load from a .env file
+  FlashMCP install server.py -f .env
+  ```
 
-#### Environment Variables
+### Direct Execution (For Advanced Use Cases)
 
-Claude Desktop runs servers in an isolated environment. Environment variables from your system are NOT automatically available to the server - you must explicitly provide them during installation:
+For advanced scenarios like custom deployments or running without Claude, you can execute your server directly:
 
-```bash
-# Single env var
-FlashMCP install server.py -e API_KEY=abc123
+```python
+from FlashMCP import FlashMCP
 
-# Multiple env vars
-FlashMCP install server.py -e API_KEY=abc123 -e OTHER_VAR=value
+mcp = FlashMCP("My App")
 
-# Load from .env file
-FlashMCP install server.py -f .env
+if __name__ == "__main__":
+    mcp.run()
 ```
 
-Environment variables persist across reinstalls and are only updated when new values are provided:
+Run it with:
+```bash
+# Using the FlashMCP CLI
+FlashMCP run server.py
+
+# Or with Python/uv directly
+python server.py
+uv run python server.py
+```
+
+
+Note: When running directly, you are responsible for ensuring all dependencies are available in your environment. Any dependencies specified on the FlashMCP instance are ignored.
+
+Choose this method when you need:
+- Custom deployment configurations
+- Integration with other services
+- Direct control over the server lifecycle
+
+### Server Object Names
+
+All FlashMCP commands will look for a server object called `mcp`, `app`, or `server` in your file. If you have a different object name or multiple servers in one file, use the syntax `server.py:my_server`:
 
 ```bash
-# First install
-FlashMCP install server.py -e FOO=bar -e BAZ=123
+# Using a standard name
+FlashMCP run server.py
 
-# Second install - FOO and BAZ are preserved
-FlashMCP install server.py -e NEW=value
-
-# Third install - FOO gets new value, others preserved
-FlashMCP install server.py -e FOO=newvalue
+# Using a custom name
+FlashMCP run server.py:my_custom_server
 ```
 
 ## Examples
@@ -437,11 +461,11 @@ What insights can you provide about the structure and relationships?"""
 
 <summary><h3>Open Developer Guide</h3></summary>
 
-#### Prerequisites
+### Prerequisites
 
 FlashMCP requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
-#### Installation
+### Installation
 
 Create a fork of this repository, then clone it:
 
@@ -460,7 +484,7 @@ uv sync --frozen --all-extras --dev
 
 
 
-#### Testing
+### Testing
 
 Please make sure to test any new functionality. Your tests should be simple and atomic and anticipate change rather than cement complex patterns.
 
@@ -471,7 +495,7 @@ Run tests from the root directory:
 pytest -vv
 ```
 
-#### Formatting
+### Formatting
 
 FlashMCP enforces a variety of required formats, which you can automatically enforce with pre-commit. 
 
@@ -487,7 +511,7 @@ The hooks will now run on every commit (as well as on every PR). To run them man
 pre-commit run --all-files
 ```
 
-#### Opening a Pull Request
+### Opening a Pull Request
 
 Fork the repository and create a new branch:
 
