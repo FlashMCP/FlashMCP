@@ -1,6 +1,7 @@
 """Tests for the FlashMCP CLI."""
 
 import json
+import sys
 from pathlib import Path
 from unittest.mock import patch, call
 
@@ -276,7 +277,6 @@ def test_server_dependencies_empty(mock_config, server_file):
 
 def test_dev_with_dependencies(mock_config, server_file):
     """Test that dev command handles dependencies correctly."""
-    # Create a server file with dependencies
     server_file = server_file.parent / "server_with_deps.py"
     server_file.write_text(
         """from FlashMCP import FlashMCP
@@ -287,21 +287,56 @@ mcp = FlashMCP("test", dependencies=["pandas", "numpy"])
     runner = CliRunner()
 
     with patch("subprocess.run") as mock_run:
-        mock_run.return_value.returncode = 0  # Set successful return code
+        mock_run.return_value.returncode = 0
         result = runner.invoke(app, ["dev", str(server_file)])
         assert result.exit_code == 0
 
-        # Check that dependencies were passed to subprocess.run
-        mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert "npx" in args
-        assert "@modelcontextprotocol/inspector" in args
-        assert "uv" in args
-        assert "run" in args
-        assert "--with" in args
-        assert "pandas" in args
-        assert "numpy" in args
-        assert "FlashMCP" in args
+        if sys.platform == "win32":
+            # On Windows, expect two calls
+            assert mock_run.call_count == 2
+            assert mock_run.call_args_list[0] == call(
+                ["npx.cmd", "--version"], check=True, capture_output=True, shell=True
+            )
+            assert mock_run.call_args_list[1] == call(
+                [
+                    "npx.cmd",
+                    "@modelcontextprotocol/inspector",
+                    "uv",
+                    "run",
+                    "--with",
+                    "FlashMCP",
+                    "--with",
+                    "numpy",
+                    "--with",
+                    "pandas",
+                    "FlashMCP",
+                    "run",
+                    str(server_file),
+                ],
+                check=True,
+                shell=True,
+            )
+        else:
+            # On Unix, expect one call
+            mock_run.assert_called_once_with(
+                [
+                    "npx",
+                    "@modelcontextprotocol/inspector",
+                    "uv",
+                    "run",
+                    "--with",
+                    "FlashMCP",
+                    "--with",
+                    "numpy",
+                    "--with",
+                    "pandas",
+                    "FlashMCP",
+                    "run",
+                    str(server_file),
+                ],
+                check=True,
+                shell=False,  # Note: shell=False on Unix
+            )
 
 
 def test_run_with_dependencies(mock_config, server_file):
