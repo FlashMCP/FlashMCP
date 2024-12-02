@@ -47,6 +47,12 @@ FlashMCP dev server.py
 ```
 This will launch a web app on http://localhost:5173/ that you can use to inspect the FlashMCP server.
 
-
+## If you start development before creating a fork - your get out of jail free card
+- Add your fork as a new remote to your local repository `git remote add fork git@github.com:YOUR-USERNAME/REPOSITORY-NAME.git`
+  - This will add your repo, short named 'fork', as a remote to your local repository
+- Verify that it was added correctly by running `git remote -v`
+- Commit your changes
+- Push your changes to your fork `git push fork <branch>`
+- Create your pull request on GitHub 
 
 
