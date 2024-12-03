@@ -3,6 +3,7 @@
 import logging
 from typing import Literal
 
+from rich.console import Console
 from rich.logging import RichHandler
 
 
@@ -27,5 +28,7 @@ def configure_logging(
         level: the log level to use
     """
     logging.basicConfig(
-        level=level, format="%(message)s", handlers=[RichHandler(rich_tracebacks=True)]
+        level=level,
+        format="%(message)s",
+        handlers=[RichHandler(console=Console(stderr=True), rich_tracebacks=True)],
     )
