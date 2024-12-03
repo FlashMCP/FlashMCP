@@ -47,7 +47,9 @@ class Image:
         if self.path:
             with open(self.path, "rb") as f:
                 data = base64.b64encode(f.read()).decode()
-        else:
+        elif self.data is not None:
             data = base64.b64encode(self.data).decode()
+        else:
+            raise ValueError("No image data available")
 
         return ImageContent(type="image", data=data, mimeType=self._mime_type)

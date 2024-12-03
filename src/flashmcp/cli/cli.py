@@ -2,6 +2,7 @@
 
 import importlib.metadata
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -242,6 +243,7 @@ def dev(
             [npx_cmd, "@modelcontextprotocol/inspector"] + uv_cmd,
             check=True,
             shell=shell,
+            env=dict(os.environ.items()),  # Convert to list of tuples for env update
         )
         sys.exit(process.returncode)
     except subprocess.CalledProcessError as e:
@@ -423,7 +425,10 @@ def install(
         # Load from .env file if specified
         if env_file:
             try:
-                env_dict.update(dotenv.dotenv_values(env_file))
+                env_values = dotenv.dotenv_values(env_file)
+                env_dict.update(
+                    (k, str(v)) for k, v in env_values.items() if v is not None
+                )
             except Exception as e:
                 logger.error(f"Failed to load .env file: {e}")
                 sys.exit(1)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, AnyUrl
 import pytest
 from FlashMCP.resources import FunctionResource
 
@@ -13,7 +13,7 @@ class TestFunctionResource:
             return "test content"
 
         resource = FunctionResource(
-            uri="fn://test",
+            uri=AnyUrl("fn://test"),
             name="test",
             description="test function",
             fn=my_func,
@@ -31,7 +31,7 @@ class TestFunctionResource:
             return "Hello, world!"
 
         resource = FunctionResource(
-            uri="function://test",
+            uri=AnyUrl("function://test"),
             name="test",
             fn=get_data,
         )
@@ -46,7 +46,7 @@ class TestFunctionResource:
             return b"Hello, world!"
 
         resource = FunctionResource(
-            uri="function://test",
+            uri=AnyUrl("function://test"),
             name="test",
             fn=get_data,
         )
@@ -60,11 +60,12 @@ class TestFunctionResource:
             return {"key": "value"}
 
         resource = FunctionResource(
-            uri="function://test",
+            uri=AnyUrl("function://test"),
             name="test",
             fn=get_data,
         )
         content = await resource.read()
+        assert isinstance(content, str)
         assert '"key": "value"' in content
 
     async def test_error_handling(self):
@@ -74,7 +75,7 @@ class TestFunctionResource:
             raise ValueError("Test error")
 
         resource = FunctionResource(
-            uri="function://test",
+            uri=AnyUrl("function://test"),
             name="test",
             fn=failing_func,
         )
@@ -88,7 +89,7 @@ class TestFunctionResource:
             name: str
 
         resource = FunctionResource(
-            uri="function://test",
+            uri=AnyUrl("function://test"),
             name="test",
             fn=lambda: MyModel(name="test"),
         )
@@ -106,7 +107,7 @@ class TestFunctionResource:
             return CustomData()
 
         resource = FunctionResource(
-            uri="function://test",
+            uri=AnyUrl("function://test"),
             name="test",
             fn=get_data,
         )

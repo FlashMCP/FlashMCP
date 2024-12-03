@@ -8,7 +8,7 @@ from typing import Any, Callable, Union
 import httpx
 import pydantic.json
 import pydantic_core
-from pydantic import Field
+from pydantic import Field, ValidationInfo
 
 from FlashMCP.resources.base import Resource
 
@@ -90,6 +90,15 @@ class FileResource(Resource):
         if not path.is_absolute():
             raise ValueError("Path must be absolute")
         return path
+
+    @pydantic.field_validator("is_binary")
+    @classmethod
+    def set_binary_from_mime_type(cls, is_binary: bool, info: ValidationInfo) -> bool:
+        """Set is_binary based on mime_type if not explicitly set."""
+        if is_binary:
+            return True
+        mime_type = info.data.get("mime_type", "text/plain")
+        return not mime_type.startswith("text/")
 
     async def read(self) -> Union[str, bytes]:
         """Read the file content."""

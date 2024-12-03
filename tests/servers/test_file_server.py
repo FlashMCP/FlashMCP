@@ -25,7 +25,7 @@ def mcp() -> FlashMCP:
 
 
 @pytest.fixture(autouse=True)
-def resources(mcp: FlashMCP, test_dir: Path) -> None:
+def resources(mcp: FlashMCP, test_dir: Path) -> FlashMCP:
     @mcp.resource("dir://test_dir")
     def list_test_dir() -> list[str]:
         """List the files in the test directory"""
@@ -59,7 +59,7 @@ def resources(mcp: FlashMCP, test_dir: Path) -> None:
 
 
 @pytest.fixture(autouse=True)
-def tools(mcp: FlashMCP, test_dir: Path) -> None:
+def tools(mcp: FlashMCP, test_dir: Path) -> FlashMCP:
     @mcp.tool()
     def delete_file(path: str) -> bool:
         # ensure path is in test_dir
@@ -67,6 +67,8 @@ def tools(mcp: FlashMCP, test_dir: Path) -> None:
             raise ValueError(f"Path must be in test_dir: {path}")
         Path(path).unlink()
         return True
+
+    return mcp
 
 
 async def test_list_resources(mcp: FlashMCP):
