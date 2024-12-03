@@ -2,6 +2,8 @@
 # dependencies = ["pydantic-ai-slim[openai]", "asyncpg", "numpy", "pgvector", "FlashMCP"]
 # ///
 
+# uv pip install 'pydantic-ai-slim[openai]' asyncpg numpy pgvector FlashMCP
+
 """
 Recursive memory system inspired by the human brain's clustering of memories.
 Uses OpenAI's 'text-embedding-3-small' model and pgvector for efficient similarity search.
