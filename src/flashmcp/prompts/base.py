@@ -1,7 +1,7 @@
 """Base classes for FlashMCP prompts."""
 
 import json
-from typing import Any, Callable, Dict, Literal, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Literal, Optional, Sequence, Awaitable
 import inspect
 
 from pydantic import BaseModel, Field, TypeAdapter, validate_call
@@ -41,7 +41,12 @@ class AssistantMessage(Message):
         super().__init__(content=content, **kwargs)
 
 
-message_validator = TypeAdapter(Union[UserMessage, AssistantMessage])
+message_validator = TypeAdapter(UserMessage | AssistantMessage)
+
+SyncPromptResult = (
+    str | Message | dict[str, Any] | Sequence[str | Message | dict[str, Any]]
+)
+PromptResult = SyncPromptResult | Awaitable[SyncPromptResult]
 
 
 class PromptArgument(BaseModel):
@@ -71,11 +76,18 @@ class Prompt(BaseModel):
     @classmethod
     def from_function(
         cls,
-        fn: Callable[..., Sequence[Message]],
+        fn: Callable[..., PromptResult],
         name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> "Prompt":
-        """Create a Prompt from a function."""
+        """Create a Prompt from a function.
+
+        The function can return:
+        - A string (converted to a message)
+        - A Message object
+        - A dict (converted to a message)
+        - A sequence of any of the above
+        """
         func_name = name or fn.__name__
 
         if func_name == "<lambda>":
