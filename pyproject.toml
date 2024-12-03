@@ -25,6 +25,7 @@ build-backend = "hatchling.build"
 [project.optional-dependencies]
 tests = [
     "pre-commit",
+    "pyright>=1.1.389",
     "pytest>=8.3.3",
     "pytest-asyncio>=0.23.5",
     "pytest-flakefinder",
@@ -39,3 +40,15 @@ asyncio_default_fixture_loop_scope = "session"
 
 [tool.hatch.version]
 source = "vcs"
+
+[tool.pyright]
+include = ["src"]
+exclude = ["**/node_modules", "**/__pycache__", ".venv", ".git", "dist"]
+pythonVersion = "3.10"
+pythonPlatform = "Darwin"
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
+useLibraryCodeForTypes = true
+venvPath = "."
+venv = ".venv"

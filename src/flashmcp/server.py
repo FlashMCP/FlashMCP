@@ -23,6 +23,7 @@ from mcp.types import (
 )
 from mcp.types import (
     Prompt as MCPPrompt,
+    PromptArgument as MCPPromptArgument,
 )
 from mcp.types import (
     Resource as MCPResource,
@@ -159,7 +160,7 @@ class FlashMCP:
 
     async def call_tool(
         self, name: str, arguments: dict
-    ) -> Sequence[TextContent | ImageContent]:
+    ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
         """Call a tool by name with arguments."""
         context = self.get_context()
         result = await self._tool_manager.call_tool(name, arguments, context=context)
@@ -462,11 +463,11 @@ class FlashMCP:
                 name=prompt.name,
                 description=prompt.description,
                 arguments=[
-                    {
-                        "name": arg.name,
-                        "description": arg.description,
-                        "required": arg.required,
-                    }
+                    MCPPromptArgument(
+                        name=arg.name,
+                        description=arg.description,
+                        required=arg.required,
+                    )
                     for arg in (prompt.arguments or [])
                 ],
             )
