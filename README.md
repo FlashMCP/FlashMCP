@@ -464,22 +464,19 @@ FlashMCP requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
 ### Installation
 
-Create a fork of this repository, then clone it:
+For development, we recommend installing FlashMCP with development dependencies, which includes various utilities the maintainers find useful.
 
 ```bash
-git clone https://github.com/YouFancyUserYou/FlashMCP.git
+git clone https://github.com/jlowin/FlashMCP.git
 cd FlashMCP
+uv sync --frozen --extra dev
 ```
 
-Next, create a virtual environment and install FlashMCP:
+For running tests only (e.g., in CI), you only need the testing dependencies:
 
 ```bash
-uv venv
-source .venv/bin/activate
-uv sync --frozen --all-extras --dev
+uv sync --frozen --extra tests
 ```
-
-
 
 ### Testing
 
