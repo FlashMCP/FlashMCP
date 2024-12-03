@@ -3,12 +3,12 @@
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch, call
+from unittest.mock import call, patch
 
 import pytest
 from typer.testing import CliRunner
 
-from FlashMCP.cli.cli import app, _parse_env_var, _parse_file_path
+from FlashMCP.cli.cli import _parse_env_var, _parse_file_path, app
 
 
 @pytest.fixture
@@ -297,46 +297,52 @@ mcp = FlashMCP("test", dependencies=["pandas", "numpy"])
             assert mock_run.call_args_list[0] == call(
                 ["npx.cmd", "--version"], check=True, capture_output=True, shell=True
             )
-            assert mock_run.call_args_list[1] == call(
-                [
-                    "npx.cmd",
-                    "@modelcontextprotocol/inspector",
-                    "uv",
-                    "run",
-                    "--with",
-                    "FlashMCP",
-                    "--with",
-                    "numpy",
-                    "--with",
-                    "pandas",
-                    "FlashMCP",
-                    "run",
-                    str(server_file),
-                ],
-                check=True,
-                shell=True,
+
+            # get the actual command and expected command without dependencies
+            actual_cmd = mock_run.call_args_list[1][0][0]
+            expected_start = [
+                "npx.cmd",
+                "@modelcontextprotocol/inspector",
+                "uv",
+                "run",
+                "--with",
+                "FlashMCP",
+            ]
+            expected_end = ["FlashMCP", "run", str(server_file)]
+
+            # verify start and end of command
+            assert actual_cmd[: len(expected_start)] == expected_start
+            assert actual_cmd[-len(expected_end) :] == expected_end
+
+            # verify dependencies are present (order-independent)
+            deps_section = actual_cmd[len(expected_start) : -len(expected_end)]
+            assert all(
+                x in deps_section for x in ["--with", "numpy", "--with", "pandas"]
             )
+
+            assert mock_run.call_args_list[1][1] == {"check": True, "shell": True}
         else:
-            # On Unix, expect one call
-            mock_run.assert_called_once_with(
-                [
-                    "npx",
-                    "@modelcontextprotocol/inspector",
-                    "uv",
-                    "run",
-                    "--with",
-                    "FlashMCP",
-                    "--with",
-                    "numpy",
-                    "--with",
-                    "pandas",
-                    "FlashMCP",
-                    "run",
-                    str(server_file),
-                ],
-                check=True,
-                shell=False,  # Note: shell=False on Unix
+            # same verification for unix, just with different command prefix
+            actual_cmd = mock_run.call_args_list[0][0][0]
+            expected_start = [
+                "npx",
+                "@modelcontextprotocol/inspector",
+                "uv",
+                "run",
+                "--with",
+                "FlashMCP",
+            ]
+            expected_end = ["FlashMCP", "run", str(server_file)]
+
+            assert actual_cmd[: len(expected_start)] == expected_start
+            assert actual_cmd[-len(expected_end) :] == expected_end
+
+            deps_section = actual_cmd[len(expected_start) : -len(expected_end)]
+            assert all(
+                x in deps_section for x in ["--with", "numpy", "--with", "pandas"]
             )
+
+            assert mock_run.call_args_list[0][1] == {"check": True, "shell": False}
 
 
 def test_run_with_dependencies(mock_config, server_file):
