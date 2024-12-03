@@ -1,28 +1,26 @@
 """Base classes for FlashMCP prompts."""
 
 import json
-from typing import Any, Callable, Dict, Literal, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Literal, Optional, Sequence, Awaitable
 import inspect
 
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, validate_call
+from pydantic import BaseModel, Field, TypeAdapter, validate_call
 from mcp.types import TextContent, ImageContent, EmbeddedResource
 import pydantic_core
+
+CONTENT_TYPES = TextContent | ImageContent | EmbeddedResource
 
 
 class Message(BaseModel):
     """Base class for all prompt messages."""
 
     role: Literal["user", "assistant"]
-    content: Union[TextContent, ImageContent, EmbeddedResource]
+    content: CONTENT_TYPES
 
-    def __init__(self, content, **kwargs):
+    def __init__(self, content: str | CONTENT_TYPES, **kwargs):
+        if isinstance(content, str):
+            content = TextContent(type="text", text=content)
         super().__init__(content=content, **kwargs)
-
-    @field_validator("content", mode="before")
-    def validate_content(cls, v):
-        if isinstance(v, str):
-            return TextContent(type="text", text=v)
-        return v
 
 
 class UserMessage(Message):
@@ -30,14 +28,25 @@ class UserMessage(Message):
 
     role: Literal["user"] = "user"
 
+    def __init__(self, content: str | CONTENT_TYPES, **kwargs):
+        super().__init__(content=content, **kwargs)
+
 
 class AssistantMessage(Message):
     """A message from the assistant."""
 
     role: Literal["assistant"] = "assistant"
 
+    def __init__(self, content: str | CONTENT_TYPES, **kwargs):
+        super().__init__(content=content, **kwargs)
 
-message_validator = TypeAdapter(Union[UserMessage, AssistantMessage])
+
+message_validator = TypeAdapter(UserMessage | AssistantMessage)
+
+SyncPromptResult = (
+    str | Message | dict[str, Any] | Sequence[str | Message | dict[str, Any]]
+)
+PromptResult = SyncPromptResult | Awaitable[SyncPromptResult]
 
 
 class PromptArgument(BaseModel):
@@ -67,11 +76,18 @@ class Prompt(BaseModel):
     @classmethod
     def from_function(
         cls,
-        fn: Callable[..., Sequence[Message]],
+        fn: Callable[..., PromptResult],
         name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> "Prompt":
-        """Create a Prompt from a function."""
+        """Create a Prompt from a function.
+
+        The function can return:
+        - A string (converted to a message)
+        - A Message object
+        - A dict (converted to a message)
+        - A sequence of any of the above
+        """
         func_name = name or fn.__name__
 
         if func_name == "<lambda>":

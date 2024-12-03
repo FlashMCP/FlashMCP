@@ -320,7 +320,11 @@ mcp = FlashMCP("test", dependencies=["pandas", "numpy"])
                 x in deps_section for x in ["--with", "numpy", "--with", "pandas"]
             )
 
-            assert mock_run.call_args_list[1][1] == {"check": True, "shell": True}
+            # Verify subprocess call kwargs, allowing for environment variables
+            call_kwargs = mock_run.call_args_list[1][1]
+            assert call_kwargs["check"] is True
+            assert call_kwargs["shell"] is True
+            assert isinstance(call_kwargs["env"], dict)
         else:
             # same verification for unix, just with different command prefix
             actual_cmd = mock_run.call_args_list[0][0][0]
@@ -342,7 +346,11 @@ mcp = FlashMCP("test", dependencies=["pandas", "numpy"])
                 x in deps_section for x in ["--with", "numpy", "--with", "pandas"]
             )
 
-            assert mock_run.call_args_list[0][1] == {"check": True, "shell": False}
+            # Verify subprocess call kwargs, allowing for environment variables
+            call_kwargs = mock_run.call_args_list[0][1]
+            assert call_kwargs["check"] is True
+            assert call_kwargs["shell"] is False
+            assert isinstance(call_kwargs["env"], dict)
 
 
 def test_run_with_dependencies(mock_config, server_file):

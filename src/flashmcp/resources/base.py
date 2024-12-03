@@ -1,14 +1,14 @@
 """Base classes and interfaces for FlashMCP resources."""
 
 import abc
-from typing import Union
+from typing import Union, Annotated
 
 from pydantic import (
     AnyUrl,
     BaseModel,
     ConfigDict,
     Field,
-    FileUrl,
+    UrlConstraints,
     ValidationInfo,
     field_validator,
 )
@@ -19,8 +19,9 @@ class Resource(BaseModel, abc.ABC):
 
     model_config = ConfigDict(validate_default=True)
 
-    # uri: Annotated[AnyUrl, BeforeValidator(maybe_cast_str_to_any_url)] = Field(
-    uri: AnyUrl = Field(default=..., description="URI of the resource")
+    uri: Annotated[AnyUrl, UrlConstraints(host_required=False)] = Field(
+        default=..., description="URI of the resource"
+    )
     name: str | None = Field(description="Name of the resource", default=None)
     description: str | None = Field(
         description="Description of the resource", default=None
@@ -30,15 +31,6 @@ class Resource(BaseModel, abc.ABC):
         description="MIME type of the resource content",
         pattern=r"^[a-zA-Z0-9]+/[a-zA-Z0-9\-+.]+$",
     )
-
-    @field_validator("uri", mode="before")
-    def validate_uri(cls, uri: AnyUrl | str) -> AnyUrl:
-        if isinstance(uri, str):
-            # AnyUrl doesn't support triple-slashes, but files do ("file:///absolute/path")
-            if uri.startswith("file://"):
-                return FileUrl(uri)
-            return AnyUrl(uri)
-        return uri
 
     @field_validator("name", mode="before")
     @classmethod

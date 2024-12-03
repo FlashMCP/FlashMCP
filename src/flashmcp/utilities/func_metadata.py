@@ -47,7 +47,7 @@ class FuncMetadata(BaseModel):
 
     async def call_fn_with_arg_validation(
         self,
-        fn: Callable | Awaitable,
+        fn: Callable[..., Any] | Awaitable[Any],
         fn_is_async: bool,
         arguments_to_validate: dict[str, Any],
         arguments_to_pass_directly: dict[str, Any] | None,
@@ -64,8 +64,12 @@ class FuncMetadata(BaseModel):
         arguments_parsed_dict |= arguments_to_pass_directly or {}
 
         if fn_is_async:
+            if isinstance(fn, Awaitable):
+                return await fn
             return await fn(**arguments_parsed_dict)
-        return fn(**arguments_parsed_dict)
+        if isinstance(fn, Callable):
+            return fn(**arguments_parsed_dict)
+        raise TypeError("fn must be either Callable or Awaitable")
 
     def pre_parse_json(self, data: dict[str, Any]) -> dict[str, Any]:
         """Pre-parse data from JSON.
@@ -123,6 +127,7 @@ def func_metadata(func: Callable, skip_names: Sequence[str] = ()) -> FuncMetadat
     sig = _get_typed_signature(func)
     params = sig.parameters
     dynamic_pydantic_model_params: dict[str, Any] = {}
+    globalns = getattr(func, "__globals__", {})
     for param in params.values():
         if param.name.startswith("_"):
             raise InvalidSignature(
@@ -153,7 +158,7 @@ def func_metadata(func: Callable, skip_names: Sequence[str] = ()) -> FuncMetadat
             ]
 
         field_info = FieldInfo.from_annotated_attribute(
-            annotation,
+            _get_typed_annotation(annotation, globalns),
             param.default
             if param.default is not inspect.Parameter.empty
             else PydanticUndefined,

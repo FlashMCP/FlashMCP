@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from pydantic import AnyUrl, FileUrl
 
 from FlashMCP.resources import (
     FileResource,
@@ -34,7 +35,7 @@ class TestResourceManager:
         """Test adding a resource."""
         manager = ResourceManager()
         resource = FileResource(
-            uri=f"file://{temp_file}",
+            uri=FileUrl(f"file://{temp_file}"),
             name="test",
             path=temp_file,
         )
@@ -46,7 +47,7 @@ class TestResourceManager:
         """Test adding the same resource twice."""
         manager = ResourceManager()
         resource = FileResource(
-            uri=f"file://{temp_file}",
+            uri=FileUrl(f"file://{temp_file}"),
             name="test",
             path=temp_file,
         )
@@ -59,7 +60,7 @@ class TestResourceManager:
         """Test warning on duplicate resources."""
         manager = ResourceManager()
         resource = FileResource(
-            uri=f"file://{temp_file}",
+            uri=FileUrl(f"file://{temp_file}"),
             name="test",
             path=temp_file,
         )
@@ -71,7 +72,7 @@ class TestResourceManager:
         """Test disabling warning on duplicate resources."""
         manager = ResourceManager(warn_on_duplicate_resources=False)
         resource = FileResource(
-            uri=f"file://{temp_file}",
+            uri=FileUrl(f"file://{temp_file}"),
             name="test",
             path=temp_file,
         )
@@ -83,7 +84,7 @@ class TestResourceManager:
         """Test getting a resource by URI."""
         manager = ResourceManager()
         resource = FileResource(
-            uri=f"file://{temp_file}",
+            uri=FileUrl(f"file://{temp_file}"),
             name="test",
             path=temp_file,
         )
@@ -105,7 +106,7 @@ class TestResourceManager:
         )
         manager._templates[template.uri_template] = template
 
-        resource = await manager.get_resource("greet://world")
+        resource = await manager.get_resource(AnyUrl("greet://world"))
         assert isinstance(resource, FunctionResource)
         content = await resource.read()
         assert content == "Hello, world!"
@@ -114,18 +115,18 @@ class TestResourceManager:
         """Test getting a non-existent resource."""
         manager = ResourceManager()
         with pytest.raises(ValueError, match="Unknown resource"):
-            await manager.get_resource("unknown://test")
+            await manager.get_resource(AnyUrl("unknown://test"))
 
     def test_list_resources(self, temp_file: Path):
         """Test listing all resources."""
         manager = ResourceManager()
         resource1 = FileResource(
-            uri=f"file://{temp_file}",
+            uri=FileUrl(f"file://{temp_file}"),
             name="test1",
             path=temp_file,
         )
         resource2 = FileResource(
-            uri=f"file://{temp_file}2",
+            uri=FileUrl(f"file://{temp_file}2"),
             name="test2",
             path=temp_file,
         )

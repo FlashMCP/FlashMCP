@@ -70,7 +70,7 @@ class ResourceTemplate(BaseModel):
                 result = await result
 
             return FunctionResource(
-                uri=uri,
+                uri=uri,  # type: ignore
                 name=self.name,
                 description=self.description,
                 mime_type=self.mime_type,

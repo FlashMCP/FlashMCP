@@ -1,3 +1,4 @@
+from pydantic import FileUrl
 import pytest
 from FlashMCP.prompts.base import (
     Prompt,
@@ -102,7 +103,7 @@ class TestRenderPrompt:
                 content=EmbeddedResource(
                     type="resource",
                     resource=TextResourceContents(
-                        uri="file://file.txt",
+                        uri=FileUrl("file://file.txt"),
                         text="File contents",
                         mimeType="text/plain",
                     ),
@@ -115,7 +116,7 @@ class TestRenderPrompt:
                 content=EmbeddedResource(
                     type="resource",
                     resource=TextResourceContents(
-                        uri="file://file.txt",
+                        uri=FileUrl("file://file.txt"),
                         text="File contents",
                         mimeType="text/plain",
                     ),
@@ -133,7 +134,7 @@ class TestRenderPrompt:
                     content=EmbeddedResource(
                         type="resource",
                         resource=TextResourceContents(
-                            uri="file://file.txt",
+                            uri=FileUrl("file://file.txt"),
                             text="File contents",
                             mimeType="text/plain",
                         ),
@@ -151,7 +152,7 @@ class TestRenderPrompt:
                 content=EmbeddedResource(
                     type="resource",
                     resource=TextResourceContents(
-                        uri="file://file.txt",
+                        uri=FileUrl("file://file.txt"),
                         text="File contents",
                         mimeType="text/plain",
                     ),
@@ -171,7 +172,7 @@ class TestRenderPrompt:
                 "content": {
                     "type": "resource",
                     "resource": {
-                        "uri": "file://file.txt",
+                        "uri": FileUrl("file://file.txt"),
                         "text": "File contents",
                         "mimeType": "text/plain",
                     },
@@ -184,7 +185,7 @@ class TestRenderPrompt:
                 content=EmbeddedResource(
                     type="resource",
                     resource=TextResourceContents(
-                        uri="file://file.txt",
+                        uri=FileUrl("file://file.txt"),
                         text="File contents",
                         mimeType="text/plain",
                     ),
