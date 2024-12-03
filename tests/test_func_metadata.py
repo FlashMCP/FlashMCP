@@ -1,15 +1,17 @@
-from pydantic import BaseModel, Field
 from typing import Annotated
+
 import annotated_types
-from FlashMCP.utilities.func_metadata import func_metadata
 import pytest
+from pydantic import BaseModel, Field
+
+from FlashMCP.utilities.func_metadata import func_metadata
 
 
-class TestInputModelA(BaseModel):
+class SomeInputModelA(BaseModel):
     pass
 
 
-class TestInputModelB(BaseModel):
+class SomeInputModelB(BaseModel):
     class InnerModel(BaseModel):
         x: int
 
@@ -44,15 +46,15 @@ def complex_arguments_fn(
         int, Field(1)
     ],
     unannotated,
-    my_model_a: TestInputModelA,
-    my_model_a_forward_ref: "TestInputModelA",
-    my_model_b: TestInputModelB,
+    my_model_a: SomeInputModelA,
+    my_model_a_forward_ref: "SomeInputModelA",
+    my_model_b: SomeInputModelB,
     an_int_annotated_with_field_default: Annotated[
         int,
         Field(1, description="An int with a field"),
     ],
     unannotated_with_default=5,
-    my_model_a_with_default: TestInputModelA = TestInputModelA(),  # noqa: B008
+    my_model_a_with_default: SomeInputModelA = SomeInputModelA(),  # noqa: B008
     an_int_with_default: int = 1,
     must_be_none_with_default: None = None,
     an_int_with_equals_field: int = Field(1, ge=0),
@@ -239,12 +241,12 @@ def test_complex_function_json_schema():
                 "title": "InnerModel",
                 "type": "object",
             },
-            "TestInputModelA": {
+            "SomeInputModelA": {
                 "properties": {},
-                "title": "TestInputModelA",
+                "title": "SomeInputModelA",
                 "type": "object",
             },
-            "TestInputModelB": {
+            "SomeInputModelB": {
                 "properties": {
                     "how_many_shrimp": {
                         "description": "How many shrimp in the tank???",
@@ -255,7 +257,7 @@ def test_complex_function_json_schema():
                     "y": {"title": "Y", "type": "null"},
                 },
                 "required": ["how_many_shrimp", "ok", "y"],
-                "title": "TestInputModelB",
+                "title": "SomeInputModelB",
                 "type": "object",
             },
         },
@@ -299,9 +301,9 @@ def test_complex_function_json_schema():
                 "type": "integer",
             },
             "unannotated": {"title": "unannotated", "type": "string"},
-            "my_model_a": {"$ref": "#/$defs/TestInputModelA"},
-            "my_model_a_forward_ref": {"$ref": "#/$defs/TestInputModelA"},
-            "my_model_b": {"$ref": "#/$defs/TestInputModelB"},
+            "my_model_a": {"$ref": "#/$defs/SomeInputModelA"},
+            "my_model_a_forward_ref": {"$ref": "#/$defs/SomeInputModelA"},
+            "my_model_b": {"$ref": "#/$defs/SomeInputModelB"},
             "an_int_annotated_with_field_default": {
                 "default": 1,
                 "description": "An int with a field",
@@ -314,7 +316,7 @@ def test_complex_function_json_schema():
                 "type": "string",
             },
             "my_model_a_with_default": {
-                "$ref": "#/$defs/TestInputModelA",
+                "$ref": "#/$defs/SomeInputModelA",
                 "default": {},
             },
             "an_int_with_default": {

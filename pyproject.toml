@@ -27,6 +27,7 @@ tests = [
     "pre-commit",
     "pytest>=8.3.3",
     "pytest-asyncio>=0.23.5",
+    "pytest-flakefinder",
     "pytest-xdist>=3.6.1",
     "ruff",
 ]
