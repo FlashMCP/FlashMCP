@@ -241,12 +241,12 @@ def test_complex_function_json_schema():
                 "title": "InnerModel",
                 "type": "object",
             },
-            "TestInputModelA": {
+            "SomeInputModelA": {
                 "properties": {},
-                "title": "TestInputModelA",
+                "title": "SomeInputModelA",
                 "type": "object",
             },
-            "TestInputModelB": {
+            "SomeInputModelB": {
                 "properties": {
                     "how_many_shrimp": {
                         "description": "How many shrimp in the tank???",
@@ -257,7 +257,7 @@ def test_complex_function_json_schema():
                     "y": {"title": "Y", "type": "null"},
                 },
                 "required": ["how_many_shrimp", "ok", "y"],
-                "title": "TestInputModelB",
+                "title": "SomeInputModelB",
                 "type": "object",
             },
         },
@@ -301,9 +301,9 @@ def test_complex_function_json_schema():
                 "type": "integer",
             },
             "unannotated": {"title": "unannotated", "type": "string"},
-            "my_model_a": {"$ref": "#/$defs/TestInputModelA"},
-            "my_model_a_forward_ref": {"$ref": "#/$defs/TestInputModelA"},
-            "my_model_b": {"$ref": "#/$defs/TestInputModelB"},
+            "my_model_a": {"$ref": "#/$defs/SomeInputModelA"},
+            "my_model_a_forward_ref": {"$ref": "#/$defs/SomeInputModelA"},
+            "my_model_b": {"$ref": "#/$defs/SomeInputModelB"},
             "an_int_annotated_with_field_default": {
                 "default": 1,
                 "description": "An int with a field",
@@ -316,7 +316,7 @@ def test_complex_function_json_schema():
                 "type": "string",
             },
             "my_model_a_with_default": {
-                "$ref": "#/$defs/TestInputModelA",
+                "$ref": "#/$defs/SomeInputModelA",
                 "default": {},
             },
             "an_int_with_default": {
