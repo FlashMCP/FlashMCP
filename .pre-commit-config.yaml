@@ -18,8 +18,3 @@ repos:
       - id: ruff-format
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
-
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.352
-    hooks:
-      - id: pyright
