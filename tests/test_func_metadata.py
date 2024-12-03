@@ -192,9 +192,9 @@ def test_skip_names():
     assert "also_skip" not in meta.arg_model.model_fields
 
     # Validate that we can call with only non-skipped parameters
-    model = meta.arg_model.model_validate({"keep_this": 1, "also_keep": 2.5})
-    assert model.keep_this == 1
-    assert model.also_keep == 2.5
+    model: BaseModel = meta.arg_model.model_validate({"keep_this": 1, "also_keep": 2.5})  # type: ignore
+    assert model.keep_this == 1  # type: ignore
+    assert model.also_keep == 2.5  # type: ignore
 
 
 async def test_lambda_function():

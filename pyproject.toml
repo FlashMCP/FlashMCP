@@ -42,7 +42,7 @@ asyncio_default_fixture_loop_scope = "session"
 source = "vcs"
 
 [tool.pyright]
-include = ["src"]
+include = ["src", "tests"]
 exclude = ["**/node_modules", "**/__pycache__", ".venv", ".git", "dist"]
 pythonVersion = "3.10"
 pythonPlatform = "Darwin"
