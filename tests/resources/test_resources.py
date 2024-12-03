@@ -1,4 +1,5 @@
 import pytest
+from pydantic import AnyUrl
 
 from FlashMCP.resources import FunctionResource, Resource
 
@@ -14,7 +15,7 @@ class TestResourceValidation:
 
         # Valid URI
         resource = FunctionResource(
-            uri="http://example.com/data",
+            uri=AnyUrl("http://example.com/data"),
             name="test",
             fn=dummy_func,
         )
@@ -23,7 +24,7 @@ class TestResourceValidation:
         # Missing protocol
         with pytest.raises(ValueError, match="Input should be a valid URL"):
             FunctionResource(
-                uri="invalid",
+                uri=AnyUrl("invalid"),
                 name="test",
                 fn=dummy_func,
             )
@@ -31,7 +32,7 @@ class TestResourceValidation:
         # Missing host
         with pytest.raises(ValueError, match="Input should be a valid URL"):
             FunctionResource(
-                uri="http://",
+                uri=AnyUrl("http://"),
                 name="test",
                 fn=dummy_func,
             )
@@ -43,7 +44,7 @@ class TestResourceValidation:
             return "data"
 
         resource = FunctionResource(
-            uri="resource://my-resource",
+            uri=AnyUrl("resource://my-resource"),
             fn=dummy_func,
         )
         assert resource.name == "resource://my-resource"
@@ -62,7 +63,7 @@ class TestResourceValidation:
 
         # Explicit name takes precedence over URI
         resource = FunctionResource(
-            uri="resource://uri-name",
+            uri=AnyUrl("resource://uri-name"),
             name="explicit-name",
             fn=dummy_func,
         )
@@ -76,14 +77,14 @@ class TestResourceValidation:
 
         # Default mime type
         resource = FunctionResource(
-            uri="resource://test",
+            uri=AnyUrl("resource://test"),
             fn=dummy_func,
         )
         assert resource.mime_type == "text/plain"
 
         # Custom mime type
         resource = FunctionResource(
-            uri="resource://test",
+            uri=AnyUrl("resource://test"),
             fn=dummy_func,
             mime_type="application/json",
         )
@@ -96,4 +97,4 @@ class TestResourceValidation:
             pass
 
         with pytest.raises(TypeError, match="abstract method"):
-            ConcreteResource(uri="test://test", name="test")  # type: ignore
+            ConcreteResource(uri=AnyUrl("test://test"), name="test")  # type: ignore
