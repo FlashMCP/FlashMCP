@@ -1,6 +1,6 @@
 instructions: |
   Apply the minimal set of labels that accurately characterize the issue/PR:
-  - Use at most 1-2 labels unless there's a compelling reason for more
+  - Use at most 1-2 labels unless there's a compelling reason for more. It's ok to use no labels.
   - Prefer specific labels (bug, feature) over generic ones (question, help wanted)
   - For PRs that fix bugs, use 'bug' not 'enhancement'
   - Never combine: bug + enhancement, feature + enhancement. For these labels, only choose the most relevant one.
@@ -12,9 +12,8 @@ labels:
     instructions: |
       Apply when describing or fixing unexpected behavior:
       - Issues: Clear error messages or unexpected outcomes
-      - PRs: Fixes for broken functionality
-      Don't apply enhancement/feature for bug fixes unless they add significant new functionality
-      beyond fixing the bug
+      - PRs: Standalone fixes for broken functionality or closing bug reports.
+      Don't apply bug unless the issue or PR is predominantly about a specific bug.
 
   - documentation:
     description: "Improvements or additions to documentation"
