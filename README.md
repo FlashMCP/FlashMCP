@@ -1,8 +1,24 @@
-<!-- omit in toc -->
-# FlashMCP 🚀
+<div align="center">
+
+### 🎉 FlashMCP has been added to the official MCP SDK! 🎉
+
+You can now find FlashMCP as part of the official Model Context Protocol Python SDK:
+
+👉 [github.com/modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk)
+
+*Please note: this repository is no longer maintained.*
+
+---
+
+
+</br></br></br>
+
+</div>
 
 <div align="center">
 
+<!-- omit in toc -->
+# FlashMCP 🚀
 <strong>The fast, Pythonic way to build MCP servers.</strong>
 
 [![PyPI - Version](https://img.shields.io/pypi/v/FlashMCP.svg)](https://pypi.org/project/FlashMCP)
