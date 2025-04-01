@@ -228,18 +228,14 @@ wheels = [
 
 [[package]]
 name = "FlashMCP"
-version = "0.3.6.dev8+g3b5ae20"
+version = "0.4.2.dev4+g654397b.d20250401"
 source = { editable = "." }
 dependencies = [
-    { name = "httpx" },
     { name = "mcp" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "python-dotenv" },
-    { name = "typer" },
+    { name = "rich" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "copychat" },
     { name = "ipython" },
@@ -252,41 +248,25 @@ dev = [
     { name = "pytest-xdist" },
     { name = "ruff" },
 ]
-tests = [
-    { name = "pre-commit" },
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-flakefinder" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
-]
 
 [package.metadata]
 requires-dist = [
-    { name = "copychat", marker = "extra == 'dev'", specifier = ">=0.5.2" },
-    { name = "httpx", specifier = ">=0.26.0" },
-    { name = "ipython", marker = "extra == 'dev'", specifier = ">=8.12.3" },
-    { name = "mcp", specifier = ">=1.0.0,<2.0.0" },
-    { name = "pdbpp", marker = "extra == 'dev'", specifier = ">=0.10.3" },
-    { name = "pre-commit", marker = "extra == 'dev'" },
-    { name = "pre-commit", marker = "extra == 'tests'" },
-    { name = "pydantic", specifier = ">=2.5.3,<3.0.0" },
-    { name = "pydantic-settings", specifier = ">=2.6.1" },
-    { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.389" },
-    { name = "pyright", marker = "extra == 'tests'", specifier = ">=1.1.389" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.3" },
-    { name = "pytest", marker = "extra == 'tests'", specifier = ">=8.3.3" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.5" },
-    { name = "pytest-asyncio", marker = "extra == 'tests'", specifier = ">=0.23.5" },
-    { name = "pytest-flakefinder", marker = "extra == 'dev'" },
-    { name = "pytest-flakefinder", marker = "extra == 'tests'" },
-    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.6.1" },
-    { name = "pytest-xdist", marker = "extra == 'tests'", specifier = ">=3.6.1" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "ruff", marker = "extra == 'dev'" },
-    { name = "ruff", marker = "extra == 'tests'" },
-    { name = "typer", specifier = ">=0.9.0" },
+    { name = "mcp", specifier = ">=1.6.0,<2.0.0" },
+    { name = "rich", specifier = ">=13.9.4" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "copychat", specifier = ">=0.5.2" },
+    { name = "ipython", specifier = ">=8.12.3" },
+    { name = "pdbpp", specifier = ">=0.10.3" },
+    { name = "pre-commit" },
+    { name = "pyright", specifier = ">=1.1.389" },
+    { name = "pytest", specifier = ">=8.3.3" },
+    { name = "pytest-asyncio", specifier = ">=0.23.5" },
+    { name = "pytest-flakefinder" },
+    { name = "pytest-xdist", specifier = ">=3.6.1" },
+    { name = "ruff" },
 ]
 
 [[package]]
@@ -455,19 +435,21 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.0.0"
+version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
     { name = "httpx-sse" },
     { name = "pydantic" },
+    { name = "pydantic-settings" },
     { name = "sse-starlette" },
     { name = "starlette" },
+    { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/de/a9ec0a1b6439f90ea59f89004bb2e7ec6890dfaeef809751d9e6577dca7e/mcp-1.0.0.tar.gz", hash = "sha256:dba51ce0b5c6a80e25576f606760c49a91ee90210fed805b530ca165d3bbc9b7", size = 82891 }
+sdist = { url = "https://files.pythonhosted.org/packages/95/d2/f587cb965a56e992634bebc8611c5b579af912b74e04eb9164bd49527d21/mcp-1.6.0.tar.gz", hash = "sha256:d9324876de2c5637369f43161cd71eebfd803df5a95e46225cab8d280e366723", size = 200031 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/89/900c0c8445ec001d3725e475fc553b0feb2e8a51be018f3bb7de51e683db/mcp-1.0.0-py3-none-any.whl", hash = "sha256:bbe70ffa3341cd4da78b5eb504958355c68381fb29971471cea1e642a2af5b8a", size = 36361 },
+    { url = "https://files.pythonhosted.org/packages/10/30/20a7f33b0b884a9d14dd3aa94ff1ac9da1479fe2ad66dd9e2736075d2506/mcp-1.6.0-py3-none-any.whl", hash = "sha256:7bd24c6ea042dbec44c754f100984d186620d8b841ec30f1b19eda9b93a634d0", size = 76077 },
 ]
 
 [[package]]

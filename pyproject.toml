@@ -1,16 +1,9 @@
 [project]
 name = "FlashMCP"
 dynamic = ["version"]
-description = "A more ergonomic interface for MCP servers"
+description = "An ergonomic interface for MCP servers"
 authors = [{ name = "Jeremiah Lowin" }]
-dependencies = [
-    "httpx>=0.26.0",
-    "mcp>=1.0.0,<2.0.0",
-    "pydantic-settings>=2.6.1",
-    "pydantic>=2.5.3,<3.0.0",
-    "typer>=0.9.0",
-    "python-dotenv>=1.0.1",
-]
+dependencies = ["mcp>=1.6.0,<2.0.0", "rich>=13.9.4"]
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
@@ -22,8 +15,8 @@ FlashMCP = "FlashMCP.cli:app"
 requires = ["hatchling>=1.21.0", "hatch-vcs>=0.4.0"]
 build-backend = "hatchling.build"
 
-[project.optional-dependencies]
-tests = [
+[dependency-groups]
+dev = [
     "pre-commit",
     "pyright>=1.1.389",
     "pytest>=8.3.3",
@@ -31,8 +24,10 @@ tests = [
     "pytest-flakefinder",
     "pytest-xdist>=3.6.1",
     "ruff",
+    "copychat>=0.5.2",
+    "ipython>=8.12.3",
+    "pdbpp>=0.10.3",
 ]
-dev = ["FlashMCP[tests]", "copychat>=0.5.2", "ipython>=8.12.3", "pdbpp>=0.10.3"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
