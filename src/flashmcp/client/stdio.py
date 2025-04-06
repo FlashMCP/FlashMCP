@@ -1,38 +1,19 @@
 import contextlib
-import datetime
 
-import mcp.types
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from typing_extensions import Unpack
 
-from FlashMCP.client.base import (
-    BaseClient,
-    ListRootsFnT,
-    LoggingFnT,
-    MessageHandlerFnT,
-    SamplingFnT,
-)
+from FlashMCP.client.base import BaseClient, ClientKwargs
 
 
 class StdioClient(BaseClient):
     def __init__(
         self,
         server_script_path: str,
-        roots: list[mcp.types.Root] | None = None,
-        sampling_callback: SamplingFnT | None = None,
-        list_roots_callback: ListRootsFnT | None = None,
-        logging_callback: LoggingFnT | None = None,
-        message_handler: MessageHandlerFnT | None = None,
-        read_timeout_seconds: datetime.timedelta | None = None,
+        **kwargs: Unpack[ClientKwargs],
     ):
-        super().__init__(
-            roots=roots,
-            sampling_callback=sampling_callback,
-            list_roots_callback=list_roots_callback,
-            logging_callback=logging_callback,
-            message_handler=message_handler,
-            read_timeout_seconds=read_timeout_seconds,
-        )
+        super().__init__(**kwargs)
         self.server_script_path = server_script_path
 
     @contextlib.asynccontextmanager
@@ -54,11 +35,7 @@ class StdioClient(BaseClient):
             async with ClientSession(
                 read_stream=stdio,
                 write_stream=write,
-                sampling_callback=self._sampling_callback,
-                list_roots_callback=self._list_roots_callback,
-                logging_callback=self._logging_callback,
-                message_handler=self._message_handler,
-                read_timeout_seconds=self._read_timeout_seconds,
+                **self._session_kwargs(),
             ) as session:
                 async with self._set_session(transport, session):
                     yield self

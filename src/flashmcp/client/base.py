@@ -1,7 +1,7 @@
 import abc
 import contextlib
 import datetime
-from typing import Any, AsyncContextManager, Optional
+from typing import Any, AsyncContextManager, Optional, TypedDict
 
 import mcp.types
 from mcp import ClientSession
@@ -17,6 +17,23 @@ def _get_roots_callback(roots: list[mcp.types.Root]) -> ListRootsFnT | None:
         return mcp.types.ListRootsResult(roots=roots)
 
     return _roots_callback
+
+
+class ClientKwargs(TypedDict, total=False):
+    roots: list[mcp.types.Root] | None
+    sampling_callback: SamplingFnT | None
+    list_roots_callback: ListRootsFnT | None
+    logging_callback: LoggingFnT | None
+    message_handler: MessageHandlerFnT | None
+    read_timeout_seconds: datetime.timedelta | None
+
+
+class SessionKwargs(TypedDict, total=False):
+    sampling_callback: SamplingFnT | None
+    list_roots_callback: ListRootsFnT | None
+    logging_callback: LoggingFnT | None
+    message_handler: MessageHandlerFnT | None
+    read_timeout_seconds: datetime.timedelta | None
 
 
 class BaseClient(abc.ABC):
@@ -48,6 +65,15 @@ class BaseClient(abc.ABC):
         self._message_handler = message_handler
         self._read_timeout_seconds = read_timeout_seconds
 
+    def _session_kwargs(self) -> SessionKwargs:
+        return SessionKwargs(
+            sampling_callback=self._sampling_callback,
+            list_roots_callback=self._list_roots_callback,
+            logging_callback=self._logging_callback,
+            message_handler=self._message_handler,
+            read_timeout_seconds=self._read_timeout_seconds,
+        )
+
     @property
     def transport(self):
         """Get the current transport connection"""
@@ -71,13 +97,7 @@ class BaseClient(abc.ABC):
         return self._session is not None
 
     @abc.abstractmethod
-    def _connect(
-        self,
-        sampling_callback: SamplingFnT | None = None,
-        list_roots_callback: ListRootsFnT | None = None,
-        logging_callback: LoggingFnT | None = None,
-        message_handler: MessageHandlerFnT | None = None,
-    ) -> AsyncContextManager:
+    def _connect(self) -> AsyncContextManager:
         """Return an async context manager that handles connection lifecycle.
         This will be called by __aenter__ to establish the connection."""
         raise NotImplementedError("Subclasses must implement this method")
