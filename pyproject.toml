@@ -5,8 +5,6 @@ description = "An ergonomic MCP interface"
 authors = [{ name = "Jeremiah Lowin" }]
 dependencies = [
     "mcp>=1.6.0,<2.0.0",
-    # include to avoid AttributeError: module 'collections' has no attribute 'Callable'
-    "pyreadline3>=3.5.4",
     "rich>=13.9.4",
 ]
 requires-python = ">=3.10"
