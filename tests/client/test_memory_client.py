@@ -48,7 +48,6 @@ def FlashMCP_server():
     return server
 
 
-@pytest.mark.asyncio
 async def test_list_tools(FlashMCP_server):
     """Test listing tools with InMemoryClient."""
     client = InMemoryClient(server=FlashMCP_server)
@@ -63,7 +62,6 @@ async def test_list_tools(FlashMCP_server):
         assert "error_tool" in tool_names
 
 
-@pytest.mark.asyncio
 async def test_call_tool(FlashMCP_server):
     """Test calling a tool with InMemoryClient."""
     client = InMemoryClient(server=FlashMCP_server)
@@ -76,7 +74,6 @@ async def test_call_tool(FlashMCP_server):
         assert "Hello, World!" in content_str
 
 
-@pytest.mark.asyncio
 async def test_list_resources(FlashMCP_server):
     """Test listing resources with InMemoryClient."""
     client = InMemoryClient(server=FlashMCP_server)
@@ -89,7 +86,6 @@ async def test_list_resources(FlashMCP_server):
         assert str(result.resources[0].uri) == "data://users"
 
 
-@pytest.mark.asyncio
 async def test_list_prompts(FlashMCP_server):
     """Test listing prompts with InMemoryClient."""
     client = InMemoryClient(server=FlashMCP_server)
@@ -102,7 +98,6 @@ async def test_list_prompts(FlashMCP_server):
         assert result.prompts[0].name == "welcome"
 
 
-@pytest.mark.asyncio
 async def test_get_prompt(FlashMCP_server):
     """Test getting a prompt with InMemoryClient."""
     client = InMemoryClient(server=FlashMCP_server)
@@ -115,7 +110,6 @@ async def test_get_prompt(FlashMCP_server):
         assert "Welcome to FlashMCP, Developer!" in result_str
 
 
-@pytest.mark.asyncio
 async def test_read_resource(FlashMCP_server):
     """Test reading a resource with InMemoryClient."""
     client = InMemoryClient(server=FlashMCP_server)
@@ -134,7 +128,6 @@ async def test_read_resource(FlashMCP_server):
         assert "Charlie" in contents_str
 
 
-@pytest.mark.asyncio
 async def test_client_connection(FlashMCP_server):
     """Test that the client connects and disconnects properly."""
     client = InMemoryClient(server=FlashMCP_server)
@@ -150,7 +143,6 @@ async def test_client_connection(FlashMCP_server):
     assert not client.is_connected()
 
 
-@pytest.mark.asyncio
 async def test_resource_template(FlashMCP_server):
     """Test using a resource template with InMemoryClient."""
     client = InMemoryClient(server=FlashMCP_server)
