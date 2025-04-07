@@ -44,7 +44,7 @@ def test_import_prompts():
     target_manager = PromptManager()
 
     # Import prompts from source to target
-    prefix = "nlp"
+    prefix = "nlp/"
     target_manager.import_prompts(source_manager, prefix)
 
     # Verify prompts were imported with prefixes
@@ -109,7 +109,7 @@ def test_import_prompts_with_duplicates():
     target_manager._prompts["common"] = target_prompt
 
     # Import prompts with prefix
-    prefix = "external"
+    prefix = "external/"
     target_manager.import_prompts(source_manager, prefix)
 
     # Verify both prompts exist in target manager
@@ -146,10 +146,10 @@ def test_import_prompts_with_nested_prefixes():
     first_manager._prompts["analyze"] = original_prompt
 
     # Import to second manager with prefix
-    second_manager.import_prompts(first_manager, "text")
+    second_manager.import_prompts(first_manager, "text/")
 
     # Import from second to third with another prefix
-    third_manager.import_prompts(second_manager, "ai")
+    third_manager.import_prompts(second_manager, "ai/")
 
     # Verify the nested prefixing
     assert "text/analyze" in second_manager._prompts

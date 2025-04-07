@@ -23,7 +23,7 @@ def test_import_tools():
     target_manager = ToolManager()
 
     # Import tools from source to target
-    prefix = "source"
+    prefix = "source/"
     target_manager.import_tools(source_manager, prefix)
 
     # Verify tools were imported with prefixes
@@ -65,7 +65,7 @@ def test_tool_duplicate_behavior():
     )  # Pre-create with the prefixed name
 
     # Import tools from source to target
-    target_manager.import_tools(source_manager, "source")
+    target_manager.import_tools(source_manager, "source/")
 
     # The original tool in the target manager is replaced by the imported one
     assert target_manager._tools["source/common_tool"].fn.__name__ == source_fn.__name__
@@ -89,8 +89,8 @@ def test_import_tools_with_multiple_prefixes():
 
     # Create target manager and import from both sources
     main_manager = ToolManager()
-    main_manager.import_tools(weather_manager, "weather")
-    main_manager.import_tools(news_manager, "news")
+    main_manager.import_tools(weather_manager, "weather/")
+    main_manager.import_tools(news_manager, "news/")
 
     # Verify tools were imported with correct prefixes
     assert "weather/forecast" in main_manager._tools
