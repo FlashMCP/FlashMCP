@@ -506,13 +506,7 @@ For development, we recommend installing FlashMCP with development dependencies,
 ```bash
 git clone https://github.com/jlowin/FlashMCP.git
 cd FlashMCP
-uv sync --frozen --extra dev
-```
-
-For running tests only (e.g., in CI), you only need the testing dependencies:
-
-```bash
-uv sync --frozen --extra tests
+uv sync
 ```
 
 ### Testing
