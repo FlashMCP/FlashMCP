@@ -4,14 +4,14 @@ from typing import TypeVar
 from mcp.shared.memory import create_connected_server_and_client_session
 from typing_extensions import Unpack
 
-from FlashMCP.client.base import BaseClient, ClientKwargs
+from FlashMCP.clients.base import BaseClient, ClientKwargs
 from FlashMCP.server.server import FlashMCP
 
 T = TypeVar("T")
 
 
-class InMemoryClient(BaseClient):
-    """Client that connects to an in-memory MCP server.
+class FlashMCPClient(BaseClient):
+    """Client that connects directly to an in-memory FlashMCP server.
 
     This client creates and manages an in-memory connection to a server,
     without using any external processes or network connections.

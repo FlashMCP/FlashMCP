@@ -6,7 +6,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from typing_extensions import Unpack
 
-from FlashMCP.client.base import BaseClient, ClientKwargs
+from FlashMCP.clients.base import BaseClient, ClientKwargs
 
 
 class StdioClient(BaseClient):

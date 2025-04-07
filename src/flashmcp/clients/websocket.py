@@ -1,28 +1,27 @@
 import contextlib
 
 from mcp import ClientSession
-from mcp.client.sse import sse_client
+from mcp.client.websocket import websocket_client
 from typing_extensions import Unpack
 
-from FlashMCP.client.base import BaseClient, ClientKwargs
+from FlashMCP.clients.base import BaseClient, ClientKwargs
 
 
-class SSEClient(BaseClient):
+class WebSocketClient(BaseClient):
     def __init__(
         self,
         url: str,
-        headers: dict[str, str] | None = None,
         **kwargs: Unpack[ClientKwargs],
     ):
         super().__init__(**kwargs)
         self.url = url
-        self.headers = headers or {}
 
     @contextlib.asynccontextmanager
     async def _connect(self):
-        """Set up SSE connection and session"""
-        async with sse_client(self.url, headers=self.headers) as transport:
+        """Set up WebSocket connection and session"""
+        async with websocket_client(self.url) as transport:
             read_stream, write_stream = transport
+
             async with ClientSession(
                 read_stream=read_stream,
                 write_stream=write_stream,

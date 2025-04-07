@@ -3,7 +3,7 @@ from typing import cast
 import pytest
 from pydantic import AnyUrl
 
-from FlashMCP.client.memory import InMemoryClient
+from FlashMCP.clients import FlashMCPClient
 from FlashMCP.server.server import FlashMCP
 
 
@@ -50,7 +50,7 @@ def FlashMCP_server():
 
 async def test_list_tools(FlashMCP_server):
     """Test listing tools with InMemoryClient."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     async with client:
         result = await client.list_tools()
@@ -64,7 +64,7 @@ async def test_list_tools(FlashMCP_server):
 
 async def test_call_tool(FlashMCP_server):
     """Test calling a tool with InMemoryClient."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     async with client:
         result = await client.call_tool("greet", {"name": "World"})
@@ -76,7 +76,7 @@ async def test_call_tool(FlashMCP_server):
 
 async def test_list_resources(FlashMCP_server):
     """Test listing resources with InMemoryClient."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     async with client:
         result = await client.list_resources()
@@ -88,7 +88,7 @@ async def test_list_resources(FlashMCP_server):
 
 async def test_list_prompts(FlashMCP_server):
     """Test listing prompts with InMemoryClient."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     async with client:
         result = await client.list_prompts()
@@ -100,7 +100,7 @@ async def test_list_prompts(FlashMCP_server):
 
 async def test_get_prompt(FlashMCP_server):
     """Test getting a prompt with InMemoryClient."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     async with client:
         result = await client.get_prompt("welcome", {"name": "Developer"})
@@ -112,7 +112,7 @@ async def test_get_prompt(FlashMCP_server):
 
 async def test_read_resource(FlashMCP_server):
     """Test reading a resource with InMemoryClient."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     async with client:
         # Use the URI from the resource we know exists in our server
@@ -130,7 +130,7 @@ async def test_read_resource(FlashMCP_server):
 
 async def test_client_connection(FlashMCP_server):
     """Test that the client connects and disconnects properly."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     # Before connection
     assert not client.is_connected()
@@ -145,7 +145,7 @@ async def test_client_connection(FlashMCP_server):
 
 async def test_resource_template(FlashMCP_server):
     """Test using a resource template with InMemoryClient."""
-    client = InMemoryClient(server=FlashMCP_server)
+    client = FlashMCPClient(server=FlashMCP_server)
 
     async with client:
         # First, list templates
