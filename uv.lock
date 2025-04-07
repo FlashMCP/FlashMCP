@@ -220,10 +220,11 @@ wheels = [
 
 [[package]]
 name = "FlashMCP"
-version = "0.4.2.dev5+gca81072.d20250405"
+version = "0.4.2.dev16+g70fcc6f.d20250407"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },
+    { name = "pyreadline3" },
     { name = "rich" },
 ]
 
@@ -244,6 +245,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "mcp", specifier = ">=1.6.0,<2.0.0" },
+    { name = "pyreadline3", specifier = ">=3.5.4" },
     { name = "rich", specifier = ">=13.9.4" },
 ]
 
@@ -714,6 +716,15 @@ name = "pyreadline"
 version = "2.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bc/7c/d724ef1ec3ab2125f38a1d53285745445ec4a8f19b9bb0761b4064316679/pyreadline-2.1.zip", hash = "sha256:4530592fc2e85b25b1a9f79664433da09237c1a270e4d78ea5aa3a2c7229e2d1", size = 109189 }
+
+[[package]]
+name = "pyreadline3"
+version = "3.5.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/49/4cea918a08f02817aabae639e3d0ac046fef9f9180518a3ad394e22da148/pyreadline3-3.5.4.tar.gz", hash = "sha256:8d57d53039a1c75adba8e50dd3d992b28143480816187ea5efbd5c78e6c885b7", size = 99839 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/dc/491b7661614ab97483abf2056be1deee4dc2490ecbf7bff9ab5cdbac86e1/pyreadline3-3.5.4-py3-none-any.whl", hash = "sha256:eaf8e6cc3c49bcccf145fc6067ba8643d1df34d604a1ec0eccbf7a18e6d3fae6", size = 83178 },
+]
 
 [[package]]
 name = "pyrepl"
