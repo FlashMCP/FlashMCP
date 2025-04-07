@@ -3,7 +3,10 @@ name = "FlashMCP"
 dynamic = ["version"]
 description = "An ergonomic MCP interface"
 authors = [{ name = "Jeremiah Lowin" }]
-dependencies = ["mcp>=1.6.0,<2.0.0", "rich>=13.9.4"]
+dependencies = [
+    "mcp>=1.6.0,<2.0.0",
+    "rich>=13.9.4",
+]
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "Apache-2.0" }

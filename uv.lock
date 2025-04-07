@@ -220,7 +220,7 @@ wheels = [
 
 [[package]]
 name = "FlashMCP"
-version = "0.4.2.dev5+gca81072.d20250405"
+version = "0.4.2.dev17+gfc3fc4e.d20250407"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },
