@@ -6,6 +6,8 @@ authors = [{ name = "Jeremiah Lowin" }]
 dependencies = [
     "mcp>=1.6.0,<2.0.0",
     "rich>=13.9.4",
+    "typer>=0.15.2",
+    "websockets>=15.0.1",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
