@@ -1,12 +1,12 @@
 from .websocket import WebSocketClient
 from .sse import SSEClient
 from .stdio import StdioClient, UvxClient
-from .memory import InMemoryClient
+from .FlashMCP_client import FlashMCPClient
 
 __all__ = [
     "StdioClient",
     "SSEClient",
     "WebSocketClient",
     "UvxClient",
-    "InMemoryClient",
+    "FlashMCPClient",
 ]
