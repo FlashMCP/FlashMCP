@@ -165,16 +165,22 @@ class BaseClient(abc.ABC):
         """Send a resources/listResourceTemplates request."""
         return await self.session.list_resource_templates()
 
-    async def read_resource(self, uri: AnyUrl) -> mcp.types.ReadResourceResult:
+    async def read_resource(self, uri: AnyUrl | str) -> mcp.types.ReadResourceResult:
         """Send a resources/read request."""
+        if isinstance(uri, str):
+            uri = AnyUrl(uri)
         return await self.session.read_resource(uri)
 
-    async def subscribe_resource(self, uri: AnyUrl) -> None:
+    async def subscribe_resource(self, uri: AnyUrl | str) -> None:
         """Send a resources/subscribe request."""
+        if isinstance(uri, str):
+            uri = AnyUrl(uri)
         await self.session.subscribe_resource(uri)
 
-    async def unsubscribe_resource(self, uri: AnyUrl) -> None:
+    async def unsubscribe_resource(self, uri: AnyUrl | str) -> None:
         """Send a resources/unsubscribe request."""
+        if isinstance(uri, str):
+            uri = AnyUrl(uri)
         await self.session.unsubscribe_resource(uri)
 
     async def list_prompts(self) -> mcp.types.ListPromptsResult:
