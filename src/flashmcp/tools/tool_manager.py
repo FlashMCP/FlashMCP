@@ -12,19 +12,22 @@ class ToolManager(mcp.server.FlashMCP.tools.ToolManager):
     Adds ability to import tools from other managers with prefixed names.
     """
 
-    def import_tools(self, tool_manager: "ToolManager", prefix: str) -> None:
+    def import_tools(
+        self, tool_manager: "ToolManager", prefix: str | None = None
+    ) -> None:
         """
         Import all tools from another ToolManager with prefixed names.
 
         Args:
             tool_manager: Another ToolManager instance to import tools from
-            prefix: Prefix to add to tool names. The resulting tool name will
-                   be in the format "{prefix}/{original_name}"
-                   For example, with prefix "weather" and tool "forecast",
+            prefix: Prefix to add to tool names, including the delimiter.
+                   The resulting tool name will be in the format "{prefix}{original_name}"
+                   if prefix is provided, otherwise the original name is used.
+                   For example, with prefix "weather/" and tool "forecast",
                    the imported tool would be available as "weather/forecast"
         """
         for name, tool in tool_manager._tools.items():
-            prefixed_name = f"{prefix}/{name}"
+            prefixed_name = f"{prefix}{name}" if prefix else name
 
             # Create a shallow copy of the tool with the prefixed name
             copied_tool = Tool.from_function(

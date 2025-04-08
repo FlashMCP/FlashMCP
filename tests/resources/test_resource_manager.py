@@ -39,7 +39,7 @@ def test_import_resources():
     target_manager = ResourceManager()
 
     # Import resources from source to target
-    prefix = "data"
+    prefix = "data+"
     target_manager.import_resources(source_manager, prefix)
 
     # Verify resources were imported with prefixes
@@ -126,7 +126,7 @@ def test_import_templates():
     target_manager = ResourceManager()
 
     # Import templates from source to target
-    prefix = "shop"
+    prefix = "shop+"
     target_manager.import_templates(source_manager, prefix)
 
     # Verify templates were imported with prefixes
@@ -212,7 +212,7 @@ def test_import_multiple_resource_types():
     target_manager = ResourceManager()
 
     # Import both resources and templates
-    prefix = "test"
+    prefix = "test+"
     target_manager.import_resources(source_manager, prefix)
     target_manager.import_templates(source_manager, prefix)
 
