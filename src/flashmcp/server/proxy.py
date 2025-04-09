@@ -1,15 +1,15 @@
 from typing import Any, cast
 
 import mcp.types
-from mcp.server.FlashMCP.prompts import Prompt
-from mcp.server.FlashMCP.resources import Resource, ResourceTemplate
-from mcp.server.FlashMCP.tools.base import Tool
-from mcp.server.FlashMCP.utilities.func_metadata import func_metadata
 from mcp.types import BlobResourceContents, PromptMessage, TextResourceContents
 
 from FlashMCP.clients.base import BaseClient
+from FlashMCP.prompts import Prompt
+from FlashMCP.resources import Resource, ResourceTemplate
 from FlashMCP.server.context import Context
 from FlashMCP.server.server import FlashMCP
+from FlashMCP.tools.base import Tool
+from FlashMCP.utilities.func_metadata import func_metadata
 from FlashMCP.utilities.logging import get_logger
 
 logger = get_logger(__name__)
