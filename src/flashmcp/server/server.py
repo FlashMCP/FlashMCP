@@ -1,28 +1,93 @@
-from typing import TYPE_CHECKING, Any, Dict
+"""FlashMCP - A more ergonomic interface for MCP servers."""
 
-import mcp.server.FlashMCP
-import mcp.types
+from __future__ import annotations as _annotations
 
-from FlashMCP.prompts.prompt_manager import PromptManager
-from FlashMCP.resources.resource_manager import ResourceManager
-from FlashMCP.server.context import Context
-from FlashMCP.tools.tool_manager import ToolManager
-from FlashMCP.utilities.logging import get_logger
+import inspect
+import json
+import re
+from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from contextlib import (
+    AbstractAsyncContextManager,
+    asynccontextmanager,
+)
+from itertools import chain
+from typing import TYPE_CHECKING, Any, Generic, Literal
+
+import anyio
+import pydantic_core
+import uvicorn
+from mcp.server.lowlevel.helper_types import ReadResourceContents
+from mcp.server.lowlevel.server import LifespanResultT
+from mcp.server.lowlevel.server import Server as MCPServer
+from mcp.server.lowlevel.server import lifespan as default_lifespan
+from mcp.server.session import ServerSession
+from mcp.server.sse import SseServerTransport
+from mcp.server.stdio import stdio_server
+from mcp.types import (
+    AnyFunction,
+    EmbeddedResource,
+    GetPromptResult,
+    ImageContent,
+    TextContent,
+)
+from mcp.types import Prompt as MCPPrompt
+from mcp.types import PromptArgument as MCPPromptArgument
+from mcp.types import Resource as MCPResource
+from mcp.types import ResourceTemplate as MCPResourceTemplate
+from mcp.types import Tool as MCPTool
+from pydantic.networks import AnyUrl
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.routing import Mount, Route
+
+import FlashMCP
+import FlashMCP.settings
+from FlashMCP.exceptions import ResourceError
+from FlashMCP.prompts import Prompt, PromptManager
+from FlashMCP.resources import FunctionResource, Resource, ResourceManager
+from FlashMCP.tools import ToolManager
+from FlashMCP.utilities.logging import configure_logging, get_logger
+from FlashMCP.utilities.types import Image
 
 if TYPE_CHECKING:
     from FlashMCP.clients.base import BaseClient
-
-    from .proxy import FlashMCPProxy
+    from FlashMCP.server.context import Context
+    from FlashMCP.server.proxy import FlashMCPProxy
 
 logger = get_logger(__name__)
 
 
-class FlashMCP(mcp.server.FlashMCP.FlashMCP):
-    def __init__(self, name: str | None = None, **settings: Any):
-        # First initialize with default settings
-        super().__init__(name=name or "FlashMCP", **settings)
+def lifespan_wrapper(
+    app: FlashMCP,
+    lifespan: Callable[[FlashMCP], AbstractAsyncContextManager[LifespanResultT]],
+) -> Callable[
+    [MCPServer[LifespanResultT]], AbstractAsyncContextManager[LifespanResultT]
+]:
+    @asynccontextmanager
+    async def wrap(s: MCPServer[LifespanResultT]) -> AsyncIterator[LifespanResultT]:
+        async with lifespan(app) as context:
+            yield context
 
-        # Replace the default managers with our extended ones
+    return wrap
+
+
+class FlashMCP(Generic[LifespanResultT]):
+    def __init__(
+        self,
+        name: str | None = None,
+        instructions: str | None = None,
+        lifespan: (
+            Callable[["FlashMCP"], AbstractAsyncContextManager[LifespanResultT]] | None
+        ) = None,
+        **settings: Any,
+    ):
+        self.settings = FlashMCP.settings.ServerSettings(**settings)
+
+        self._mcp_server = MCPServer[LifespanResultT](
+            name=name or "FlashMCP",
+            instructions=instructions,
+            lifespan=lifespan_wrapper(self, lifespan) if lifespan else default_lifespan,  # type: ignore
+        )
         self._tool_manager = ToolManager(
             warn_on_duplicate_tools=self.settings.warn_on_duplicate_tools
         )
@@ -32,20 +97,414 @@ class FlashMCP(mcp.server.FlashMCP.FlashMCP):
         self._prompt_manager = PromptManager(
             warn_on_duplicate_prompts=self.settings.warn_on_duplicate_prompts
         )
+        self.dependencies = self.settings.dependencies
 
         # Setup for mounted apps
-        self._mounted_apps: Dict[str, "FlashMCP"] = {}
+        self._mounted_apps: dict[str, "FlashMCP"] = {}
 
-    def get_context(self) -> Context:
+        # Set up MCP protocol handlers
+        self._setup_handlers()
+
+        # Configure logging
+        configure_logging(self.settings.log_level)
+
+    @property
+    def name(self) -> str:
+        return self._mcp_server.name
+
+    @property
+    def instructions(self) -> str | None:
+        return self._mcp_server.instructions
+
+    def run(self, transport: Literal["stdio", "sse"] = "stdio") -> None:
+        """Run the FlashMCP server. Note this is a synchronous function.
+
+        Args:
+            transport: Transport protocol to use ("stdio" or "sse")
+        """
+        TRANSPORTS = Literal["stdio", "sse"]
+        if transport not in TRANSPORTS.__args__:  # type: ignore
+            raise ValueError(f"Unknown transport: {transport}")
+
+        if transport == "stdio":
+            anyio.run(self.run_stdio_async)
+        else:  # transport == "sse"
+            anyio.run(self.run_sse_async)
+
+    def _setup_handlers(self) -> None:
+        """Set up core MCP protocol handlers."""
+        self._mcp_server.list_tools()(self.list_tools)
+        self._mcp_server.call_tool()(self.call_tool)
+        self._mcp_server.list_resources()(self.list_resources)
+        self._mcp_server.read_resource()(self.read_resource)
+        self._mcp_server.list_prompts()(self.list_prompts)
+        self._mcp_server.get_prompt()(self.get_prompt)
+        self._mcp_server.list_resource_templates()(self.list_resource_templates)
+
+    async def list_tools(self) -> list[MCPTool]:
+        """List all available tools."""
+        tools = self._tool_manager.list_tools()
+        return [
+            MCPTool(
+                name=info.name,
+                description=info.description,
+                inputSchema=info.parameters,
+            )
+            for info in tools
+        ]
+
+    def get_context(self) -> "Context[ServerSession, LifespanResultT]":
         """
         Returns a Context object. Note that the context will only be valid
         during a request; outside a request, most methods will error.
         """
+
         try:
             request_context = self._mcp_server.request_context
         except LookupError:
             request_context = None
+        from FlashMCP.server.context import Context
+
         return Context(request_context=request_context, FlashMCP=self)
+
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any]
+    ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        """Call a tool by name with arguments."""
+        context = self.get_context()
+        result = await self._tool_manager.call_tool(name, arguments, context=context)
+        converted_result = _convert_to_content(result)
+        return converted_result
+
+    async def list_resources(self) -> list[MCPResource]:
+        """List all available resources."""
+
+        resources = self._resource_manager.list_resources()
+        return [
+            MCPResource(
+                uri=resource.uri,
+                name=resource.name or "",
+                description=resource.description,
+                mimeType=resource.mime_type,
+            )
+            for resource in resources
+        ]
+
+    async def list_resource_templates(self) -> list[MCPResourceTemplate]:
+        templates = self._resource_manager.list_templates()
+        return [
+            MCPResourceTemplate(
+                uriTemplate=template.uri_template,
+                name=template.name,
+                description=template.description,
+            )
+            for template in templates
+        ]
+
+    async def read_resource(self, uri: AnyUrl | str) -> Iterable[ReadResourceContents]:
+        """Read a resource by URI."""
+
+        resource = await self._resource_manager.get_resource(uri)
+        if not resource:
+            raise ResourceError(f"Unknown resource: {uri}")
+
+        try:
+            content = await resource.read()
+            return [ReadResourceContents(content=content, mime_type=resource.mime_type)]
+        except Exception as e:
+            logger.error(f"Error reading resource {uri}: {e}")
+            raise ResourceError(str(e))
+
+    def add_tool(
+        self,
+        fn: AnyFunction,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> None:
+        """Add a tool to the server.
+
+        The tool function can optionally request a Context object by adding a parameter
+        with the Context type annotation. See the @tool decorator for examples.
+
+        Args:
+            fn: The function to register as a tool
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+        """
+        self._tool_manager.add_tool(fn, name=name, description=description)
+
+    def tool(
+        self, name: str | None = None, description: str | None = None
+    ) -> Callable[[AnyFunction], AnyFunction]:
+        """Decorator to register a tool.
+
+        Tools can optionally request a Context object by adding a parameter with the
+        Context type annotation. The context provides access to MCP capabilities like
+        logging, progress reporting, and resource access.
+
+        Args:
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+
+        Example:
+            @server.tool()
+            def my_tool(x: int) -> str:
+                return str(x)
+
+            @server.tool()
+            def tool_with_context(x: int, ctx: Context) -> str:
+                ctx.info(f"Processing {x}")
+                return str(x)
+
+            @server.tool()
+            async def async_tool(x: int, context: Context) -> str:
+                await context.report_progress(50, 100)
+                return str(x)
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @tool decorator was used incorrectly. "
+                "Did you forget to call it? Use @tool() instead of @tool"
+            )
+
+        def decorator(fn: AnyFunction) -> AnyFunction:
+            self.add_tool(fn, name=name, description=description)
+            return fn
+
+        return decorator
+
+    def add_resource(self, resource: Resource) -> None:
+        """Add a resource to the server.
+
+        Args:
+            resource: A Resource instance to add
+        """
+        self._resource_manager.add_resource(resource)
+
+    def resource(
+        self,
+        uri: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        mime_type: str | None = None,
+    ) -> Callable[[AnyFunction], AnyFunction]:
+        """Decorator to register a function as a resource.
+
+        The function will be called when the resource is read to generate its content.
+        The function can return:
+        - str for text content
+        - bytes for binary content
+        - other types will be converted to JSON
+
+        If the URI contains parameters (e.g. "resource://{param}") or the function
+        has parameters, it will be registered as a template resource.
+
+        Args:
+            uri: URI for the resource (e.g. "resource://my-resource" or "resource://{param}")
+            name: Optional name for the resource
+            description: Optional description of the resource
+            mime_type: Optional MIME type for the resource
+
+        Example:
+            @server.resource("resource://my-resource")
+            def get_data() -> str:
+                return "Hello, world!"
+
+            @server.resource("resource://my-resource")
+            async get_data() -> str:
+                data = await fetch_data()
+                return f"Hello, world! {data}"
+
+            @server.resource("resource://{city}/weather")
+            def get_weather(city: str) -> str:
+                return f"Weather for {city}"
+
+            @server.resource("resource://{city}/weather")
+            async def get_weather(city: str) -> str:
+                data = await fetch_weather(city)
+                return f"Weather for {city}: {data}"
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(uri):
+            raise TypeError(
+                "The @resource decorator was used incorrectly. "
+                "Did you forget to call it? Use @resource('uri') instead of @resource"
+            )
+
+        def decorator(fn: AnyFunction) -> AnyFunction:
+            # Check if this should be a template
+            has_uri_params = "{" in uri and "}" in uri
+            has_func_params = bool(inspect.signature(fn).parameters)
+
+            if has_uri_params or has_func_params:
+                # Validate that URI params match function params
+                uri_params = set(re.findall(r"{(\w+)}", uri))
+                func_params = set(inspect.signature(fn).parameters.keys())
+
+                if uri_params != func_params:
+                    raise ValueError(
+                        f"Mismatch between URI parameters {uri_params} "
+                        f"and function parameters {func_params}"
+                    )
+
+                # Register as template
+                self._resource_manager.add_template(
+                    fn=fn,
+                    uri_template=uri,
+                    name=name,
+                    description=description,
+                    mime_type=mime_type or "text/plain",
+                )
+            else:
+                # Register as regular resource
+                resource = FunctionResource(
+                    uri=AnyUrl(uri),
+                    name=name,
+                    description=description,
+                    mime_type=mime_type or "text/plain",
+                    fn=fn,
+                )
+                self.add_resource(resource)
+            return fn
+
+        return decorator
+
+    def add_prompt(self, prompt: Prompt) -> None:
+        """Add a prompt to the server.
+
+        Args:
+            prompt: A Prompt instance to add
+        """
+        self._prompt_manager.add_prompt(prompt)
+
+    def prompt(
+        self, name: str | None = None, description: str | None = None
+    ) -> Callable[[AnyFunction], AnyFunction]:
+        """Decorator to register a prompt.
+
+        Args:
+            name: Optional name for the prompt (defaults to function name)
+            description: Optional description of what the prompt does
+
+        Example:
+            @server.prompt()
+            def analyze_table(table_name: str) -> list[Message]:
+                schema = read_table_schema(table_name)
+                return [
+                    {
+                        "role": "user",
+                        "content": f"Analyze this schema:\n{schema}"
+                    }
+                ]
+
+            @server.prompt()
+            async def analyze_file(path: str) -> list[Message]:
+                content = await read_file(path)
+                return [
+                    {
+                        "role": "user",
+                        "content": {
+                            "type": "resource",
+                            "resource": {
+                                "uri": f"file://{path}",
+                                "text": content
+                            }
+                        }
+                    }
+                ]
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @prompt decorator was used incorrectly. "
+                "Did you forget to call it? Use @prompt() instead of @prompt"
+            )
+
+        def decorator(func: AnyFunction) -> AnyFunction:
+            prompt = Prompt.from_function(func, name=name, description=description)
+            self.add_prompt(prompt)
+            return func
+
+        return decorator
+
+    async def run_stdio_async(self) -> None:
+        """Run the server using stdio transport."""
+        async with stdio_server() as (read_stream, write_stream):
+            await self._mcp_server.run(
+                read_stream,
+                write_stream,
+                self._mcp_server.create_initialization_options(),
+            )
+
+    async def run_sse_async(self) -> None:
+        """Run the server using SSE transport."""
+        starlette_app = self.sse_app()
+
+        config = uvicorn.Config(
+            starlette_app,
+            host=self.settings.host,
+            port=self.settings.port,
+            log_level=self.settings.log_level.lower(),
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    def sse_app(self) -> Starlette:
+        """Return an instance of the SSE server app."""
+        sse = SseServerTransport(self.settings.message_path)
+
+        async def handle_sse(request: Request) -> None:
+            async with sse.connect_sse(
+                request.scope,
+                request.receive,
+                request._send,  # type: ignore[reportPrivateUsage]
+            ) as streams:
+                await self._mcp_server.run(
+                    streams[0],
+                    streams[1],
+                    self._mcp_server.create_initialization_options(),
+                )
+
+        return Starlette(
+            debug=self.settings.debug,
+            routes=[
+                Route(self.settings.sse_path, endpoint=handle_sse),
+                Mount(self.settings.message_path, app=sse.handle_post_message),
+            ],
+        )
+
+    async def list_prompts(self) -> list[MCPPrompt]:
+        """List all available prompts."""
+        prompts = self._prompt_manager.list_prompts()
+        return [
+            MCPPrompt(
+                name=prompt.name,
+                description=prompt.description,
+                arguments=[
+                    MCPPromptArgument(
+                        name=arg.name,
+                        description=arg.description,
+                        required=arg.required,
+                    )
+                    for arg in (prompt.arguments or [])
+                ],
+            )
+            for prompt in prompts
+        ]
+
+    async def get_prompt(
+        self, name: str, arguments: dict[str, Any] | None = None
+    ) -> GetPromptResult:
+        """Get a prompt by name with arguments."""
+        try:
+            messages = await self._prompt_manager.render_prompt(name, arguments)
+
+            return GetPromptResult(messages=pydantic_core.to_jsonable_python(messages))
+        except Exception as e:
+            logger.error(f"Error getting prompt {name}: {e}")
+            raise ValueError(str(e))
 
     def mount(self, prefix: str, app: "FlashMCP") -> None:
         """Mount another FlashMCP application with a given prefix.
@@ -105,3 +564,28 @@ class FlashMCP(mcp.server.FlashMCP.FlashMCP):
         from .proxy import FlashMCPProxy
 
         return await FlashMCPProxy.from_client(client=client, **settings)
+
+
+def _convert_to_content(
+    result: Any,
+) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+    """Convert a result to a sequence of content objects."""
+    if result is None:
+        return []
+
+    if isinstance(result, TextContent | ImageContent | EmbeddedResource):
+        return [result]
+
+    if isinstance(result, Image):
+        return [result.to_image_content()]
+
+    if isinstance(result, list | tuple):
+        return list(chain.from_iterable(_convert_to_content(item) for item in result))  # type: ignore[reportUnknownVariableType]
+
+    if not isinstance(result, str):
+        try:
+            result = json.dumps(pydantic_core.to_jsonable_python(result))
+        except Exception:
+            result = str(result)
+
+    return [TextContent(type="text", text=result)]
