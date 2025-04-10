@@ -254,20 +254,16 @@ wheels = [
 
 [[package]]
 name = "FlashMCP"
-version = "0.4.2.dev38+g8f79109.d20250410"
+version = "0.4.2.dev40+g8720a78.d20250410"
 source = { editable = "." }
 dependencies = [
     { name = "dotenv" },
+    { name = "fastapi" },
     { name = "mcp" },
+    { name = "openapi-pydantic" },
     { name = "rich" },
     { name = "typer" },
     { name = "websockets" },
-]
-
-[package.optional-dependencies]
-openapi = [
-    { name = "fastapi" },
-    { name = "openapi-pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -288,9 +284,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
-    { name = "fastapi", marker = "extra == 'openapi'", specifier = ">=0.115.12" },
+    { name = "fastapi", specifier = ">=0.115.12" },
     { name = "mcp", specifier = ">=1.6.0,<2.0.0" },
-    { name = "openapi-pydantic", marker = "extra == 'openapi'", specifier = ">=0.5.1" },
+    { name = "openapi-pydantic", specifier = ">=0.5.1" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "typer", specifier = ">=0.15.2" },
     { name = "websockets", specifier = ">=15.0.1" },
