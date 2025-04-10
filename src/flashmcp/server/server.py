@@ -1,11 +1,9 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
-from __future__ import annotations as _annotations
-
 import inspect
 import json
 import re
-from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import (
     AbstractAsyncContextManager,
     asynccontextmanager,
@@ -14,8 +12,10 @@ from itertools import chain
 from typing import TYPE_CHECKING, Any, Generic, Literal
 
 import anyio
+import httpx
 import pydantic_core
 import uvicorn
+from fastapi import FastAPI
 from mcp.server.lowlevel.helper_types import ReadResourceContents
 from mcp.server.lowlevel.server import LifespanResultT
 from mcp.server.lowlevel.server import Server as MCPServer
@@ -52,14 +52,15 @@ from FlashMCP.utilities.types import Image
 if TYPE_CHECKING:
     from FlashMCP.clients.base import BaseClient
     from FlashMCP.server.context import Context
+    from FlashMCP.server.openapi import FlashMCPOpenAPI
     from FlashMCP.server.proxy import FlashMCPProxy
 
 logger = get_logger(__name__)
 
 
 def lifespan_wrapper(
-    app: FlashMCP,
-    lifespan: Callable[[FlashMCP], AbstractAsyncContextManager[LifespanResultT]],
+    app: "FlashMCP",
+    lifespan: Callable[["FlashMCP"], AbstractAsyncContextManager[LifespanResultT]],
 ) -> Callable[
     [MCPServer[LifespanResultT]], AbstractAsyncContextManager[LifespanResultT]
 ]:
@@ -201,7 +202,7 @@ class FlashMCP(Generic[LifespanResultT]):
             for template in templates
         ]
 
-    async def read_resource(self, uri: AnyUrl | str) -> Iterable[ReadResourceContents]:
+    async def read_resource(self, uri: AnyUrl | str) -> list[ReadResourceContents]:
         """Read a resource by URI."""
 
         resource = await self._resource_manager.get_resource(uri)
@@ -564,6 +565,36 @@ class FlashMCP(Generic[LifespanResultT]):
         from .proxy import FlashMCPProxy
 
         return await FlashMCPProxy.from_client(client=client, **settings)
+
+    @classmethod
+    def from_openapi(
+        cls, openapi_spec: dict[str, Any], client: httpx.AsyncClient, **settings: Any
+    ) -> "FlashMCPOpenAPI":
+        """
+        Create a FlashMCP server from an OpenAPI specification.
+        """
+        from .openapi import FlashMCPOpenAPI
+
+        return FlashMCPOpenAPI(openapi_spec=openapi_spec, client=client, **settings)
+
+    @classmethod
+    def from_fastapi(
+        cls, app: FastAPI, name: str | None = None, **settings: Any
+    ) -> "FlashMCPOpenAPI":
+        """
+        Create a FlashMCP server from a FastAPI application.
+        """
+        from .openapi import FlashMCPOpenAPI
+
+        client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://fastapi"
+        )
+
+        name = name or app.title
+
+        return FlashMCPOpenAPI(
+            openapi_spec=app.openapi(), client=client, name=name, **settings
+        )
 
 
 def _convert_to_content(
