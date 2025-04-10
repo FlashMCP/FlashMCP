@@ -5,7 +5,7 @@ from __future__ import annotations as _annotations
 import inspect
 import json
 import re
-from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import (
     AbstractAsyncContextManager,
     asynccontextmanager,
@@ -201,7 +201,7 @@ class FlashMCP(Generic[LifespanResultT]):
             for template in templates
         ]
 
-    async def read_resource(self, uri: AnyUrl | str) -> Iterable[ReadResourceContents]:
+    async def read_resource(self, uri: AnyUrl | str) -> list[ReadResourceContents]:
         """Read a resource by URI."""
 
         resource = await self._resource_manager.get_resource(uri)

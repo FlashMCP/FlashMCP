@@ -1,5 +1,6 @@
+import json
 import logging
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
+from typing import Any, Literal, Union, cast
 
 # Using the recommended library: openapi-pydantic
 from openapi_pydantic import (
@@ -10,6 +11,7 @@ from openapi_pydantic import (
     PathItem,
     Reference,
     RequestBody,
+    Response,
     Schema,
 )
 from pydantic import BaseModel, Field, ValidationError
@@ -23,7 +25,7 @@ HttpMethod = Literal[
     "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD", "TRACE"
 ]
 ParameterLocation = Literal["path", "query", "header", "cookie"]
-JsonSchema = Dict[str, Any]
+JsonSchema = dict[str, Any]
 
 
 class ParameterInfo(BaseModel):
@@ -33,7 +35,7 @@ class ParameterInfo(BaseModel):
     location: ParameterLocation  # Mapped from 'in' field of openapi-pydantic Parameter
     required: bool = False
     schema_: JsonSchema = Field(..., alias="schema")  # Target name in IR
-    description: Optional[str] = None
+    description: str | None = None
 
     # No model_config needed here if we populate manually after accessing 'in'
 
@@ -42,10 +44,18 @@ class RequestBodyInfo(BaseModel):
     """Represents the request body for an HTTP operation in our IR."""
 
     required: bool = False
-    content_schema: Dict[str, JsonSchema] = Field(
+    content_schema: dict[str, JsonSchema] = Field(
         default_factory=dict
     )  # Key: media type
-    description: Optional[str] = None
+    description: str | None = None
+
+
+class ResponseInfo(BaseModel):
+    """Represents response information in our IR."""
+
+    description: str | None = None
+    # Store schema per media type, key is media type
+    content_schema: dict[str, JsonSchema] = Field(default_factory=dict)
 
 
 class HTTPRoute(BaseModel):
@@ -53,13 +63,28 @@ class HTTPRoute(BaseModel):
 
     path: str
     method: HttpMethod
-    operation_id: Optional[str] = None
-    summary: Optional[str] = None
-    description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
-    parameters: List[ParameterInfo] = Field(default_factory=list)
-    request_body: Optional[RequestBodyInfo] = None
+    operation_id: str | None = None
+    summary: str | None = None
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    parameters: list[ParameterInfo] = Field(default_factory=list)
+    request_body: RequestBodyInfo | None = None
+    responses: dict[str, ResponseInfo] = Field(
+        default_factory=dict
+    )  # Key: status code str
 
+
+# Export public symbols
+__all__ = [
+    "HTTPRoute",
+    "ParameterInfo",
+    "RequestBodyInfo",
+    "ResponseInfo",
+    "HttpMethod",
+    "ParameterLocation",
+    "JsonSchema",
+    "parse_openapi_to_http_routes",
+]
 
 # --- Helper Functions ---
 
@@ -150,14 +175,14 @@ def _convert_to_parameter_location(param_in: str) -> ParameterLocation:
 
 
 def _extract_parameters(
-    operation_params: Optional[List[Union[Parameter, Reference]]],
-    path_item_params: Optional[List[Union[Parameter, Reference]]],
+    operation_params: list[Union[Parameter, Reference]] | None,
+    path_item_params: list[Union[Parameter, Reference]] | None,
     openapi: OpenAPI,
-) -> List[ParameterInfo]:
+) -> list[ParameterInfo]:
     """Extracts and resolves parameters using corrected attribute names."""
-    extracted_params: List[ParameterInfo] = []
-    seen_params: Dict[
-        Tuple[str, str], bool
+    extracted_params: list[ParameterInfo] = []
+    seen_params: dict[
+        tuple[str, str], bool
     ] = {}  # Use string keys to avoid type issues
     all_params_refs = (operation_params or []) + (path_item_params or [])
 
@@ -222,8 +247,8 @@ def _extract_parameters(
 
 
 def _extract_request_body(
-    request_body_or_ref: Optional[Union[RequestBody, Reference]], openapi: OpenAPI
-) -> Optional[RequestBodyInfo]:
+    request_body_or_ref: RequestBody | Reference | None, openapi: OpenAPI
+) -> RequestBodyInfo | None:
     """Extracts and resolves the request body using corrected attribute names."""
     if not request_body_or_ref:
         return None
@@ -233,7 +258,7 @@ def _extract_request_body(
             # ... (error logging remains the same)
             return None
 
-        content_schemas: Dict[str, JsonSchema] = {}
+        content_schemas: dict[str, JsonSchema] = {}
         if request_body.content:
             for media_type_str, media_type_obj in request_body.content.items():
                 # --- *** CORRECTED ATTRIBUTE ACCESS HERE *** ---
@@ -274,14 +299,65 @@ def _extract_request_body(
         return None
 
 
+def _extract_responses(
+    operation_responses: dict[str, Response | Reference] | None,
+    openapi: OpenAPI,
+) -> dict[str, ResponseInfo]:
+    """Extracts and resolves response information for an operation."""
+    extracted_responses: dict[str, ResponseInfo] = {}
+    if not operation_responses:
+        return extracted_responses
+
+    for status_code, resp_or_ref in operation_responses.items():
+        try:
+            response = cast(Response, _resolve_ref(resp_or_ref, openapi))
+            if not isinstance(response, Response):
+                ref_str = getattr(resp_or_ref, "ref", "unknown")
+                logger.warning(
+                    f"Expected Response after resolving ref '{ref_str}' for status code {status_code}, got {type(response)}. Skipping."
+                )
+                continue
+
+            content_schemas: dict[str, JsonSchema] = {}
+            if response.content:
+                for media_type_str, media_type_obj in response.content.items():
+                    if (
+                        isinstance(media_type_obj, MediaType)
+                        and media_type_obj.media_type_schema
+                    ):
+                        try:
+                            schema_dict = _extract_schema_as_dict(
+                                media_type_obj.media_type_schema, openapi
+                            )
+                            content_schemas[media_type_str] = schema_dict
+                        except ValueError as schema_err:
+                            logger.error(
+                                f"Failed to extract schema for media type '{media_type_str}' in response {status_code}: {schema_err}"
+                            )
+
+            resp_info = ResponseInfo(
+                description=response.description, content_schema=content_schemas
+            )
+            extracted_responses[str(status_code)] = resp_info
+
+        except (ValidationError, ValueError, AttributeError) as e:
+            ref_name = getattr(resp_or_ref, "ref", "unknown")
+            logger.error(
+                f"Failed to extract response for status code {status_code} (ref: '{ref_name}'): {e}",
+                exc_info=False,
+            )
+
+    return extracted_responses
+
+
 # --- Main Parsing Function ---
 # (No changes needed in the main loop logic, only in the helpers it calls)
-def parse_openapi_to_http_routes(openapi_dict: Dict[str, Any]) -> List[HTTPRoute]:
+def parse_openapi_to_http_routes(openapi_dict: dict[str, Any]) -> list[HTTPRoute]:
     """
     Parses an OpenAPI schema dictionary into a list of HTTPRoute objects
     using the openapi-pydantic library.
     """
-    routes: List[HTTPRoute] = []
+    routes: list[HTTPRoute] = []
     try:
         openapi: OpenAPI = OpenAPI.model_validate(openapi_dict)
         logger.info(f"Successfully parsed OpenAPI schema version: {openapi.openapi}")
@@ -319,7 +395,7 @@ def parse_openapi_to_http_routes(openapi_dict: Dict[str, Any]) -> List[HTTPRoute
             ]:
                 continue
 
-            operation: Optional[Operation] = getattr(path_item_obj, method_lower, None)
+            operation: Operation | None = getattr(path_item_obj, method_lower, None)
 
             if operation and isinstance(operation, Operation):
                 method_upper = cast(HttpMethod, method_lower.upper())
@@ -331,6 +407,7 @@ def parse_openapi_to_http_routes(openapi_dict: Dict[str, Any]) -> List[HTTPRoute
                     request_body_info = _extract_request_body(
                         operation.requestBody, openapi
                     )
+                    responses = _extract_responses(operation.responses, openapi)
 
                     route = HTTPRoute(
                         path=path_str,
@@ -341,6 +418,7 @@ def parse_openapi_to_http_routes(openapi_dict: Dict[str, Any]) -> List[HTTPRoute
                         tags=operation.tags or [],
                         parameters=parameters,
                         request_body=request_body_info,
+                        responses=responses,
                     )
                     routes.append(route)
                     logger.info(
@@ -371,7 +449,7 @@ if __name__ == "__main__":
         "paths": {
             "/pets": {
                 "get": {
-                    "summary": "List all pets",
+                    "summary": "list all pets",
                     "operationId": "listPets",
                     "tags": ["pets"],
                     "parameters": [
@@ -466,3 +544,215 @@ if __name__ == "__main__":
         print(f"\nError parsing schema: {e}")
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}")
+
+
+def clean_schema_for_display(schema: JsonSchema | None) -> JsonSchema | None:
+    """
+    Clean up a schema dictionary for display by removing internal/complex fields.
+    """
+    if not schema or not isinstance(schema, dict):
+        return schema
+
+    # Make a copy to avoid modifying the input schema
+    cleaned = schema.copy()
+
+    # Fields commonly removed for simpler display to LLMs or users
+    fields_to_remove = [
+        "allOf",
+        "anyOf",
+        "oneOf",
+        "not",  # Composition keywords
+        "nullable",  # Handled by type unions usually
+        "discriminator",
+        "readOnly",
+        "writeOnly",
+        "deprecated",
+        "xml",
+        "externalDocs",
+        # Can be verbose, maybe remove based on flag?
+        # "pattern", "minLength", "maxLength",
+        # "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum",
+        # "multipleOf", "minItems", "maxItems", "uniqueItems",
+        # "minProperties", "maxProperties"
+    ]
+    for field in fields_to_remove:
+        if field in cleaned:
+            cleaned.pop(field)
+
+    # Recursively clean properties and items
+    if "properties" in cleaned:
+        cleaned["properties"] = {
+            k: clean_schema_for_display(v) for k, v in cleaned["properties"].items()
+        }
+        # Remove properties section if empty after cleaning
+        if not cleaned["properties"]:
+            cleaned.pop("properties")
+
+    if "items" in cleaned:
+        cleaned["items"] = clean_schema_for_display(cleaned["items"])
+        # Remove items section if empty after cleaning
+        if not cleaned["items"]:
+            cleaned.pop("items")
+
+    if "additionalProperties" in cleaned:
+        # Often verbose, can be simplified
+        if isinstance(cleaned["additionalProperties"], dict):
+            cleaned["additionalProperties"] = clean_schema_for_display(
+                cleaned["additionalProperties"]
+            )
+        elif cleaned["additionalProperties"] is True:
+            # Maybe keep 'true' or represent as 'Allows additional properties' text?
+            pass  # Keep simple boolean for now
+
+    # Remove title if it just repeats the property name (heuristic)
+    # This requires knowing the property name, so better done when formatting properties dict
+
+    return cleaned
+
+
+def generate_example_from_schema(schema: JsonSchema | None) -> Any:
+    """
+    Generate a simple example value from a JSON schema dictionary.
+    Very basic implementation focusing on types.
+    """
+    if not schema or not isinstance(schema, dict):
+        return "unknown"  # Or None?
+
+    # Use default value if provided
+    if "default" in schema:
+        return schema["default"]
+    # Use first enum value if provided
+    if "enum" in schema and isinstance(schema["enum"], list) and schema["enum"]:
+        return schema["enum"][0]
+    # Use first example if provided
+    if (
+        "examples" in schema
+        and isinstance(schema["examples"], list)
+        and schema["examples"]
+    ):
+        return schema["examples"][0]
+    if "example" in schema:
+        return schema["example"]
+
+    schema_type = schema.get("type")
+
+    if schema_type == "object":
+        result = {}
+        properties = schema.get("properties", {})
+        if isinstance(properties, dict):
+            # Generate example for first few properties or required ones? Limit complexity.
+            required_props = set(schema.get("required", []))
+            props_to_include = list(properties.keys())[
+                :3
+            ]  # Limit to first 3 for brevity
+            for prop_name in props_to_include:
+                if prop_name in properties:
+                    result[prop_name] = generate_example_from_schema(
+                        properties[prop_name]
+                    )
+            # Ensure required props are present if possible
+            for req_prop in required_props:
+                if req_prop not in result and req_prop in properties:
+                    result[req_prop] = generate_example_from_schema(
+                        properties[req_prop]
+                    )
+        return result if result else {"key": "value"}  # Basic object if no props
+
+    elif schema_type == "array":
+        items_schema = schema.get("items")
+        if isinstance(items_schema, dict):
+            # Generate one example item
+            item_example = generate_example_from_schema(items_schema)
+            return [item_example] if item_example is not None else []
+        return ["example_item"]  # Fallback
+
+    elif schema_type == "string":
+        format_type = schema.get("format")
+        if format_type == "date-time":
+            return "2024-01-01T12:00:00Z"
+        if format_type == "date":
+            return "2024-01-01"
+        if format_type == "email":
+            return "user@example.com"
+        if format_type == "uuid":
+            return "123e4567-e89b-12d3-a456-426614174000"
+        if format_type == "byte":
+            return "ZXhhbXBsZQ=="  # "example" base64
+        return "string"
+
+    elif schema_type == "integer":
+        return 1
+    elif schema_type == "number":
+        return 1.5
+    elif schema_type == "boolean":
+        return True
+    elif schema_type == "null":
+        return None
+
+    # Fallback if type is unknown or missing
+    return "unknown_type"
+
+
+def format_json_for_description(data: Any, indent: int = 2) -> str:
+    """Formats Python data as a JSON string block for markdown."""
+    try:
+        json_str = json.dumps(data, indent=indent)
+        return f"```json\n{json_str}\n```"
+    except TypeError:
+        return f"```\nCould not serialize to JSON: {data}\n```"
+
+
+def format_description_with_responses(
+    base_description: str,
+    responses: dict[
+        str, Any
+    ],  # Changed from specific ResponseInfo type to avoid circular imports
+) -> str:
+    """Formats the base description string with response information."""
+    if not responses:
+        return base_description
+
+    desc_parts = [base_description]
+    response_section = "\n\n**Responses:**"
+    added_response_section = False
+
+    # Determine success codes (common ones)
+    success_codes = {"200", "201", "202", "204"}  # As strings
+    success_status = next((s for s in success_codes if s in responses), None)
+
+    # Process all responses
+    responses_to_process = responses.items()
+
+    for status_code, resp_info in sorted(responses_to_process):
+        if not added_response_section:
+            desc_parts.append(response_section)
+            added_response_section = True
+
+        status_marker = " (Success)" if status_code == success_status else ""
+        desc_parts.append(
+            f"\n- **{status_code}**{status_marker}: {resp_info.description or 'No description.'}"
+        )
+
+        # Process content schemas for this response
+        if resp_info.content_schema:
+            # Prioritize json, then take first available
+            media_type = (
+                "application/json"
+                if "application/json" in resp_info.content_schema
+                else next(iter(resp_info.content_schema), None)
+            )
+
+            if media_type:
+                schema = resp_info.content_schema.get(media_type)
+                desc_parts.append(f"  - Content-Type: `{media_type}`")
+
+                if schema:
+                    # Generate Example
+                    example = generate_example_from_schema(schema)
+                    if example != "unknown_type" and example is not None:
+                        desc_parts.append("\n  - **Example:**")
+                        desc_parts.append(
+                            format_json_for_description(example, indent=2)
+                        )
+
+    return "\n".join(desc_parts)

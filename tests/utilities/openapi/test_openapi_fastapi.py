@@ -12,7 +12,7 @@ from FlashMCP.utilities.openapi import parse_openapi_to_http_routes
 def fastapi_server() -> FastAPI:
     """Fixture that returns a FastAPI app for live OpenAPI schema testing."""
     from enum import Enum
-    from typing import List, Optional
+    from typing import List
 
     from fastapi import Body, Depends, Header, HTTPException, Path, Query
     from pydantic import BaseModel, Field
@@ -30,12 +30,12 @@ def fastapi_server() -> FastAPI:
         """Example pydantic model for testing OpenAPI schema generation."""
 
         name: str
-        description: Optional[str] = None
+        description: str | None = None
         price: float
-        tax: Optional[float] = None
-        tags: List[str] = Field(default_factory=list)
+        tax: float | None = None
+        tags: list[str] = Field(default_factory=list)
         status: ItemStatus = ItemStatus.available
-        dimensions: Optional[Dict[str, float]] = None
+        dimensions: dict[str, float] | None = None
 
     # Create a FastAPI app with comprehensive features
     app = FastAPI(
@@ -64,9 +64,7 @@ def fastapi_server() -> FastAPI:
     async def list_items(
         skip: int = Query(0, description="Number of items to skip"),
         limit: int = Query(10, description="Max number of items to return"),
-        status: Optional[ItemStatus] = Query(
-            None, description="Filter items by status"
-        ),
+        status: ItemStatus | None = Query(None, description="Filter items by status"),
     ):
         """List all items with pagination and optional status filtering."""
         fake_items = [
