@@ -34,7 +34,7 @@ def users_db() -> dict[int, User]:
 
 @pytest.fixture
 def fastapi_app(users_db: dict[int, User]) -> FastAPI:
-    app = FastAPI(name="Test App")
+    app = FastAPI(title="FastAPI App")
 
     @app.get("/users")
     async def get_users() -> list[User]:
@@ -96,6 +96,20 @@ async def test_create_openapi_server(
 
     assert isinstance(server, FlashMCP)
     assert server.name == "Test App"
+
+
+async def test_create_openapi_server_classmethod(
+    fastapi_app: FastAPI, api_client: httpx.AsyncClient
+):
+    server = FlashMCP.from_openapi(openapi_spec=fastapi_app.openapi(), client=api_client)
+    assert isinstance(server, FlashMCPOpenAPI)
+    assert server.name == "OpenAPI FlashMCP"
+
+
+async def test_create_fastapi_server_classmethod(fastapi_app: FastAPI):
+    server = FlashMCP.from_fastapi(fastapi_app)
+    assert isinstance(server, FlashMCPOpenAPI)
+    assert server.name == "FastAPI App"
 
 
 class TestTools:

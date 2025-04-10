@@ -16,6 +16,8 @@ from openapi_pydantic import (
 )
 from pydantic import BaseModel, Field, ValidationError
 
+from FlashMCP.utilities import openapi
+
 logger = logging.getLogger(__name__)
 
 # --- Intermediate Representation (IR) Definition ---
@@ -756,3 +758,40 @@ def format_description_with_responses(
                         )
 
     return "\n".join(desc_parts)
+
+
+def _combine_schemas(route: openapi.HTTPRoute) -> dict[str, Any]:
+    """
+    Combines parameter and request body schemas into a single schema.
+
+    Args:
+        route: HTTPRoute object
+
+    Returns:
+        Combined schema dictionary
+    """
+    properties = {}
+    required = []
+
+    # Add path parameters
+    for param in route.parameters:
+        if param.required:
+            required.append(param.name)
+        properties[param.name] = param.schema_
+
+    # Add request body if it exists
+    if route.request_body and route.request_body.content_schema:
+        # For now, just use the first content type's schema
+        content_type = next(iter(route.request_body.content_schema))
+        body_schema = route.request_body.content_schema[content_type]
+        body_props = body_schema.get("properties", {})
+        for prop_name, prop_schema in body_props.items():
+            properties[prop_name] = prop_schema
+        if route.request_body.required:
+            required.extend(body_schema.get("required", []))
+
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": required,
+    }

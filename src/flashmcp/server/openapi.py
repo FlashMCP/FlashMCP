@@ -13,18 +13,15 @@ from FlashMCP.resources import Resource, ResourceTemplate
 from FlashMCP.server.server import FlashMCP
 from FlashMCP.tools.base import Tool
 from FlashMCP.utilities import openapi
-from FlashMCP.utilities.func_metadata import (
-    func_metadata as mcp_func_metadata,
-)
+from FlashMCP.utilities.func_metadata import func_metadata
 from FlashMCP.utilities.logging import get_logger
-
-# Re-export the formatter function for convenience
-from FlashMCP.utilities.openapi import format_description_with_responses
+from FlashMCP.utilities.openapi import (
+    _combine_schemas,
+    format_description_with_responses,
+)
 
 logger = get_logger(__name__)
 
-
-# HTTP Methods as a Literal for type checking
 HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]
 
 
@@ -96,6 +93,13 @@ def _determine_route_type(
 
     # Default fallback
     return RouteType.TOOL
+
+
+# Placeholder function to provide function metadata
+async def _openapi_passthrough(*args, **kwargs):
+    """Placeholder function for OpenAPI endpoints."""
+    # This is kept for metadata generation purposes
+    pass
 
 
 class OpenAPITool(Tool):
@@ -447,7 +451,6 @@ class FlashMCPOpenAPI(FlashMCP):
         client: httpx.AsyncClient,
         name: str | None = None,
         route_maps: list[RouteMap] | None = None,
-        default_mime_type: str = "application/json",
         **settings: Any,
     ):
         """
@@ -464,7 +467,6 @@ class FlashMCPOpenAPI(FlashMCP):
         super().__init__(name=name or "OpenAPI FlashMCP", **settings)
 
         self._client = client
-        self._default_mime_type = default_mime_type
 
         http_routes = openapi.parse_openapi_to_http_routes(openapi_spec)
 
@@ -547,7 +549,6 @@ class FlashMCPOpenAPI(FlashMCP):
             uri=resource_uri,
             name=resource_name,
             description=enhanced_description,
-            mime_type=self._default_mime_type,
         )
         # Register the resource by directly assigning to the resources dictionary
         self._resource_manager._resources[str(resource.uri)] = resource
@@ -621,53 +622,3 @@ class FlashMCPOpenAPI(FlashMCP):
                 pass
 
         return result
-
-
-# Function metadata utility
-def func_metadata(fn):
-    """Function to generate metadata for a function."""
-    return mcp_func_metadata(fn)
-
-
-# Placeholder function to provide function metadata
-async def _openapi_passthrough(*args, **kwargs):
-    """Placeholder function for OpenAPI endpoints."""
-    # This is kept for metadata generation purposes
-    pass
-
-
-def _combine_schemas(route: openapi.HTTPRoute) -> dict[str, Any]:
-    """
-    Combines parameter and request body schemas into a single schema.
-
-    Args:
-        route: HTTPRoute object
-
-    Returns:
-        Combined schema dictionary
-    """
-    properties = {}
-    required = []
-
-    # Add path parameters
-    for param in route.parameters:
-        if param.required:
-            required.append(param.name)
-        properties[param.name] = param.schema_
-
-    # Add request body if it exists
-    if route.request_body and route.request_body.content_schema:
-        # For now, just use the first content type's schema
-        content_type = next(iter(route.request_body.content_schema))
-        body_schema = route.request_body.content_schema[content_type]
-        body_props = body_schema.get("properties", {})
-        for prop_name, prop_schema in body_props.items():
-            properties[prop_name] = prop_schema
-        if route.request_body.required:
-            required.extend(body_schema.get("required", []))
-
-    return {
-        "type": "object",
-        "properties": properties,
-        "required": required,
-    }
