@@ -4,6 +4,7 @@ dynamic = ["version"]
 description = "An ergonomic MCP interface"
 authors = [{ name = "Jeremiah Lowin" }]
 dependencies = [
+    "dotenv>=0.9.9",
     "mcp>=1.6.0,<2.0.0",
     "rich>=13.9.4",
     "typer>=0.15.2",
