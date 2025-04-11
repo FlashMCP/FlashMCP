@@ -2,7 +2,7 @@
 
 <!-- omit in toc -->
 # FlashMCP v2 🚀
-<strong>Build and interact with MCP applications the fast, Pythonic way.</strong>
+<strong>The fast, Pythonic way to build MCP servers.</strong>
 
 [![PyPI - Version](https://img.shields.io/pypi/v/FlashMCP.svg)](https://pypi.org/project/FlashMCP)
 [![Tests](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml/badge.svg)](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml)
