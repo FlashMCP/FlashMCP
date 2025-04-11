@@ -99,7 +99,7 @@ class FlashMCP(Generic[LifespanResultT]):
         self.dependencies = self.settings.dependencies
 
         # Setup for mounted apps
-        self._mounted_apps: dict[str, "FlashMCP"] = {}
+        self._mounted_apps: dict[str, FlashMCP] = {}
 
         # Set up MCP protocol handlers
         self._setup_handlers()
@@ -640,7 +640,7 @@ def _convert_to_content(
         other_content = []
 
         for item in result:
-            if isinstance(item, (TextContent, ImageContent, EmbeddedResource, Image)):
+            if isinstance(item, TextContent | ImageContent | EmbeddedResource | Image):
                 mcp_types.append(_convert_to_content(item)[0])
             else:
                 other_content.append(item)
