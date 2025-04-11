@@ -50,11 +50,10 @@ from FlashMCP.utilities.logging import configure_logging, get_logger
 from FlashMCP.utilities.types import Image
 
 if TYPE_CHECKING:
-    from FlashMCP.clients.base import BaseClient
+    from FlashMCP.client import Client
     from FlashMCP.server.context import Context
     from FlashMCP.server.openapi import FlashMCPOpenAPI
     from FlashMCP.server.proxy import FlashMCPProxy
-
 logger = get_logger(__name__)
 
 
@@ -117,20 +116,29 @@ class FlashMCP(Generic[LifespanResultT]):
     def instructions(self) -> str | None:
         return self._mcp_server.instructions
 
-    def run(self, transport: Literal["stdio", "sse"] = "stdio") -> None:
+    async def run_async(self, transport: Literal["stdio", "sse"] | None = None) -> None:
+        """Run the FlashMCP server asynchronously.
+
+        Args:
+            transport: Transport protocol to use ("stdio" or "sse")
+        """
+        if transport is None:
+            transport = "stdio"
+        if transport not in ["stdio", "sse"]:
+            raise ValueError(f"Unknown transport: {transport}")
+
+        if transport == "stdio":
+            await self.run_stdio_async()
+        else:  # transport == "sse"
+            await self.run_sse_async()
+
+    def run(self, transport: Literal["stdio", "sse"] | None = None) -> None:
         """Run the FlashMCP server. Note this is a synchronous function.
 
         Args:
             transport: Transport protocol to use ("stdio" or "sse")
         """
-        TRANSPORTS = Literal["stdio", "sse"]
-        if transport not in TRANSPORTS.__args__:  # type: ignore
-            raise ValueError(f"Unknown transport: {transport}")
-
-        if transport == "stdio":
-            anyio.run(self.run_stdio_async)
-        else:  # transport == "sse"
-            anyio.run(self.run_sse_async)
+        anyio.run(self.run_async, transport)
 
     def _setup_handlers(self) -> None:
         """Set up core MCP protocol handlers."""
@@ -547,7 +555,9 @@ class FlashMCP(Generic[LifespanResultT]):
         logger.debug(f"Imported prompts with prefix '{prompt_prefix}'")
 
     @classmethod
-    async def as_proxy(cls, client: "BaseClient", **settings: Any) -> "FlashMCPProxy":
+    async def as_proxy(
+        cls, client: "Client | FlashMCP", **settings: Any
+    ) -> "FlashMCPProxy":
         """
         Create a FlashMCP proxy server from a client.
 
@@ -562,9 +572,18 @@ class FlashMCP(Generic[LifespanResultT]):
         Returns:
             A FlashMCP server that proxies requests to the client
         """
+        from FlashMCP.client import Client
+
         from .proxy import FlashMCPProxy
 
-        return await FlashMCPProxy.from_client(client=client, **settings)
+        if isinstance(client, Client):
+            return await FlashMCPProxy.from_client(client=client, **settings)
+
+        elif isinstance(client, FlashMCP):
+            return await FlashMCPProxy.from_server(server=client, **settings)
+
+        else:
+            raise ValueError(f"Unknown client type: {type(client)}")
 
     @classmethod
     def from_openapi(

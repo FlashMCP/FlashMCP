@@ -5,7 +5,8 @@ import pytest
 from dirty_equals import Contains
 
 from FlashMCP import FlashMCP
-from FlashMCP.clients.FlashMCP_client import FlashMCPClient
+from FlashMCP.client import Client
+from FlashMCP.client.transports import FlashMCPTransport
 from FlashMCP.server.proxy import FlashMCPProxy
 
 USERS = [
@@ -62,13 +63,13 @@ def FlashMCP_server():
 @pytest.fixture
 async def proxy_server(FlashMCP_server):
     """Fixture that creates a FlashMCP proxy server."""
-    return await FlashMCP.as_proxy(FlashMCPClient(FlashMCP_server))
+    return await FlashMCP.as_proxy(Client(transport=FlashMCPTransport(FlashMCP_server)))
 
 
 async def test_create_proxy(FlashMCP_server):
     """Test that the proxy server properly forwards requests to the original server."""
     # Create a client
-    client = FlashMCPClient(FlashMCP_server)
+    client = Client(transport=FlashMCPTransport(FlashMCP_server))
 
     server = await FlashMCPProxy.from_client(client)
 
