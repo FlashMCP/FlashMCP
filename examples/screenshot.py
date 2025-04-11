@@ -5,8 +5,8 @@ Give Claude a tool to capture and view screenshots.
 """
 
 import io
-from FlashMCP import FlashMCP, Image
 
+from FlashMCP import FlashMCP, Image
 
 # Create server
 mcp = FlashMCP("Screenshot Demo", dependencies=["pyautogui", "Pillow"])

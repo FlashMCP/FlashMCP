@@ -1,8 +1,19 @@
-"""FlashMCP - A more ergonomic interface for MCP servers."""
+"""FlashMCP - An ergonomic MCP interface."""
 
 from importlib.metadata import version
-from .server import FlashMCP, Context
-from .utilities.types import Image
+
+
+from FlashMCP.server.server import FlashMCP
+from FlashMCP.server.context import Context
+from FlashMCP.client import Client
+from FlashMCP.utilities.types import Image
+from . import client, settings
 
 __version__ = version("FlashMCP")
-__all__ = ["FlashMCP", "Context", "Image"]
+__all__ = [
+    "FlashMCP",
+    "Context",
+    "client",
+    "settings",
+    "Image",
+]

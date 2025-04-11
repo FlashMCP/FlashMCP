@@ -1,6 +1,5 @@
 from FlashMCP import FlashMCP
 
-
 # Create an MCP server
 mcp = FlashMCP("Demo")
 

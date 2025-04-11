@@ -4,7 +4,6 @@ FlashMCP Echo Server
 
 from FlashMCP import FlashMCP
 
-
 # Create server
 mcp = FlashMCP("Echo Server")
 
