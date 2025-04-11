@@ -3,7 +3,8 @@ from typing import Any, cast
 import mcp.types
 from mcp.types import BlobResourceContents, PromptMessage, TextResourceContents
 
-from FlashMCP.clients.base import BaseClient
+import FlashMCP
+from FlashMCP.client import Client
 from FlashMCP.prompts import Prompt
 from FlashMCP.resources import Resource, ResourceTemplate
 from FlashMCP.server.context import Context
@@ -20,14 +21,12 @@ def _proxy_passthrough():
 
 
 class ProxyTool(Tool):
-    def __init__(self, client: "BaseClient", **kwargs):
+    def __init__(self, client: "Client", **kwargs):
         super().__init__(**kwargs)
         self._client = client
 
     @classmethod
-    async def from_client(
-        cls, client: "BaseClient", tool: mcp.types.Tool
-    ) -> "ProxyTool":
+    async def from_client(cls, client: "Client", tool: mcp.types.Tool) -> "ProxyTool":
         return cls(
             client=client,
             name=tool.name,
@@ -50,7 +49,7 @@ class ProxyTool(Tool):
 
 class ProxyResource(Resource):
     def __init__(
-        self, client: "BaseClient", *, _value: str | bytes | None = None, **kwargs
+        self, client: "Client", *, _value: str | bytes | None = None, **kwargs
     ):
         super().__init__(**kwargs)
         self._client = client
@@ -58,7 +57,7 @@ class ProxyResource(Resource):
 
     @classmethod
     async def from_client(
-        cls, client: "BaseClient", resource: mcp.types.Resource
+        cls, client: "Client", resource: mcp.types.Resource
     ) -> "ProxyResource":
         return cls(
             client=client,
@@ -83,13 +82,13 @@ class ProxyResource(Resource):
 
 
 class ProxyTemplate(ResourceTemplate):
-    def __init__(self, client: "BaseClient", **kwargs):
+    def __init__(self, client: "Client", **kwargs):
         super().__init__(**kwargs)
         self._client = client
 
     @classmethod
     async def from_client(
-        cls, client: "BaseClient", template: mcp.types.ResourceTemplate
+        cls, client: "Client", template: mcp.types.ResourceTemplate
     ) -> "ProxyTemplate":
         return cls(
             client=client,
@@ -123,13 +122,13 @@ class ProxyTemplate(ResourceTemplate):
 
 
 class ProxyPrompt(Prompt):
-    def __init__(self, client: "BaseClient", **kwargs):
+    def __init__(self, client: "Client", **kwargs):
         super().__init__(**kwargs)
         self._client = client
 
     @classmethod
     async def from_client(
-        cls, client: "BaseClient", prompt: mcp.types.Prompt
+        cls, client: "Client", prompt: mcp.types.Prompt
     ) -> "ProxyPrompt":
         return cls(
             client=client,
@@ -155,7 +154,10 @@ class FlashMCPProxy(FlashMCP):
 
     @classmethod
     async def from_client(
-        cls, client: "BaseClient", name: str | None = None, **settings: Any
+        cls,
+        client: "Client",
+        name: str | None = None,
+        **settings: FlashMCP.settings.ServerSettings,
     ) -> "FlashMCPProxy":
         """Create a FlashMCP proxy server from a client.
 
@@ -210,3 +212,8 @@ class FlashMCPProxy(FlashMCP):
 
             logger.info(f"Created server '{server.name}' proxying to client: {client}")
             return server
+
+    @classmethod
+    async def from_server(cls, server: FlashMCP, **settings: Any) -> "FlashMCPProxy":
+        client = Client(transport=FlashMCP.client.transports.FlashMCPTransport(server))
+        return await cls.from_client(client, **settings)
