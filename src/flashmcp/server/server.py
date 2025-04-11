@@ -100,7 +100,7 @@ class FlashMCP(Generic[LifespanResultT]):
         self.dependencies = self.settings.dependencies
 
         # Setup for mounted apps
-        self._mounted_apps: dict[str, "FlashMCP"] = {}
+        self._mounted_apps: dict[str, FlashMCP] = {}
 
         # Set up MCP protocol handlers
         self._setup_handlers()
