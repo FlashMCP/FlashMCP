@@ -1,0 +1,62 @@
+---
+title: Installation
+icon: arrow-down-to-line
+---
+## Install FlashMCP
+
+We recommend using [uv](https://docs.astral.sh/uv/getting-started/installation/) to install and manage FlashMCP.
+
+If you plan to use FlashMCP in your project, you can add it as a dependency with:
+
+```bash
+uv add FlashMCP
+```
+
+Alternatively, you can install it directly with `pip` or `uv pip`:
+<CodeGroup>
+    ```bash uv
+    uv pip install FlashMCP
+    ```
+
+    ```bash pip
+    pip install FlashMCP
+    ```
+</CodeGroup>
+
+## Verify Installation
+
+To verify that FlashMCP is installed correctly, you can run the following command:
+
+```bash
+FlashMCP version
+```
+
+You should see output like the following:
+
+```bash
+$ FlashMCP version
+
+FlashMCP version:   0.4.2.dev41+ga077727.d20250410
+MCP version:                                1.6.0
+Python version:                            3.12.2
+Platform:            macOS-15.3.1-arm64-arm-64bit
+FlashMCP root path:            ~/Developer/FlashMCP
+```
+
+## Installing for Development
+
+If you plan to contribute to FlashMCP, you should begin by cloning the repository and using uv to install all dependencies.
+
+```bash
+git clone https://github.com/jlowin/FlashMCP.git
+cd FlashMCP
+uv sync
+```
+
+This will install all dependencies, including ones for development, and create a virtual environment.
+
+To run the tests, use pytest:
+
+```bash
+pytest
+```
