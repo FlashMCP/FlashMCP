@@ -17,7 +17,7 @@ from mcp.types import (
 from pydantic import AnyUrl, Field
 
 from FlashMCP import Context, FlashMCP
-from FlashMCP.prompts.base import EmbeddedResource, Message, UserMessage
+from FlashMCP.prompts.prompt import EmbeddedResource, Message, UserMessage
 from FlashMCP.resources import FileResource, FunctionResource
 from FlashMCP.utilities.types import Image
 
@@ -482,7 +482,7 @@ class TestContextInjection:
         def tool_with_context(x: int, ctx: Context) -> str:
             return f"Request {ctx.request_id}: {x}"
 
-        tool = mcp._tool_manager.add_tool(tool_with_context)
+        tool = mcp._tool_manager.add_tool_from_fn(tool_with_context)
         assert tool.context_kwarg == "ctx"
 
     async def test_context_injection(self):
