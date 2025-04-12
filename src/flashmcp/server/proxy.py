@@ -9,7 +9,7 @@ from FlashMCP.prompts import Prompt
 from FlashMCP.resources import Resource, ResourceTemplate
 from FlashMCP.server.context import Context
 from FlashMCP.server.server import FlashMCP
-from FlashMCP.tools.base import Tool
+from FlashMCP.tools.tool import Tool
 from FlashMCP.utilities.func_metadata import func_metadata
 from FlashMCP.utilities.logging import get_logger
 

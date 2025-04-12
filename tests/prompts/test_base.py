@@ -2,7 +2,7 @@ import pytest
 from mcp.types import EmbeddedResource, TextResourceContents
 from pydantic import FileUrl
 
-from FlashMCP.prompts.base import (
+from FlashMCP.prompts.prompt import (
     AssistantMessage,
     Message,
     Prompt,
