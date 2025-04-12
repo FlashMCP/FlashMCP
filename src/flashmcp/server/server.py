@@ -78,8 +78,10 @@ class FlashMCP(Generic[LifespanResultT]):
         lifespan: (
             Callable[["FlashMCP"], AbstractAsyncContextManager[LifespanResultT]] | None
         ) = None,
+        tags: set[str] | None = None,
         **settings: Any,
     ):
+        self.tags: set[str] = tags or set()
         self.settings = FlashMCP.settings.ServerSettings(**settings)
 
         self._mcp_server = MCPServer[LifespanResultT](
