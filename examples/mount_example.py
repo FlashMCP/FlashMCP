@@ -53,7 +53,9 @@ async def news_data():
 
 
 # Main application
-app = FlashMCP("Main App")
+app = FlashMCP(
+    "Main App", dependencies=["FlashMCP@git+https://github.com/jlowin/FlashMCP.git"]
+)
 
 
 @app.tool()
@@ -109,4 +111,4 @@ if __name__ == "__main__":
     asyncio.run(get_server_details())
 
     # Then start the server (uncomment to run the server)
-    # app.run()
+    app.run()
