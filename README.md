@@ -4,6 +4,7 @@
 # FlashMCP v2 🚀
 <strong>The fast, Pythonic way to build MCP servers.</strong>
 
+[![Docs](https://img.shields.io/badge/docs-goFlashMCP.com-blue)](https://goFlashMCP.com)
 [![PyPI - Version](https://img.shields.io/pypi/v/FlashMCP.svg)](https://pypi.org/project/FlashMCP)
 [![Tests](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml/badge.svg)](https://github.com/jlowin/FlashMCP/actions/workflows/run-tests.yml)
 [![License](https://img.shields.io/github/license/jlowin/FlashMCP.svg)](https://github.com/jlowin/FlashMCP/blob/main/LICENSE)
@@ -27,48 +28,27 @@ if __name__ == "__main__":
     mcp.run()
 ```
 
-Run it locally for testing:
-```bash
-FlashMCP dev server.py
-```
 
-Install it for use with Claude Desktop:
+Run the server locally:
 ```bash
-FlashMCP install server.py
+FlashMCP run server.py
 ```
 
 FlashMCP handles the complex protocol details and server management, letting you focus on building great tools and applications. It's designed to feel natural to Python developers.
 
-## Key Features:
-
-*   **Simple Server Creation:** Build MCP servers with minimal boilerplate using intuitive decorators (`@tool`, `@resource`, `@prompt`).
-*   **Proxy MCP Servers:** Create proxy servers to expose existing MCP servers or clients with modifications, or convert between transport protocols (e.g., expose a Stdio server via SSE for web access).
-*   **Compose MCP Servers:** Compose complex applications by mounting multiple FlashMCP servers together.
-*   **API Generation:** Automatically create MCP servers from existing **OpenAPI specifications** or **FastAPI applications**.
-*   **Powerful Clients:** Programmatically interact with *any* MCP server, regardless of how it was built.
-*   **LLM Sampling:** Request completions from client LLMs directly within your MCP tools.
-*   **Pythonic Interface:** Designed with familiar Python patterns like decorators and type hints.
-*   **Context Injection:** Easily access core MCP capabilities like sampling, logging, and progress reporting within your functions.
-
----
-
-### What's New in v2?
-
-FlashMCP 1.0 made it so easy to build MCP servers that it's now part of the [official Model Context Protocol Python SDK](https://github.com/modelcontextprotocol/python-sdk)! For basic use cases, you can use the upstream version by importing `mcp.server.FlashMCP.FlashMCP` (or installing `FlashMCP=1.0`). 
-
-Based on how the MCP ecosystem is evolving, FlashMCP 2.0 builds on that foundation to introduce a variety of new features (and more experimental ideas). It adds advanced features like proxying and composing MCP servers, as well as automatically generating them from OpenAPI specs or FastAPI objects. FlashMCP 2.0 also introduces new client-side functionality like LLM sampling.
-
-
----
 
 <!-- omit in toc -->
 ## Table of Contents
 
-- [Key Features:](#key-features)
-  - [What's New in v2?](#whats-new-in-v2)
-- [Installation](#installation)
-- [Quickstart](#quickstart)
 - [What is MCP?](#what-is-mcp)
+- [Why FlashMCP?](#why-FlashMCP)
+- [Key Features](#key-features)
+  - [Servers](#servers)
+  - [Clients](#clients)
+- [What's New in v2?](#whats-new-in-v2)
+- [Documentation](#documentation)
+  - [Installation](#installation)
+  - [Quickstart](#quickstart)
 - [Core Concepts](#core-concepts)
   - [The `FlashMCP` Server](#the-FlashMCP-server)
   - [Tools](#tools)
@@ -98,7 +78,62 @@ Based on how the MCP ecosystem is evolving, FlashMCP 2.0 builds on that foundati
     - [Formatting \& Linting](#formatting--linting)
     - [Pull Requests](#pull-requests)
 
-## Installation
+
+## What is MCP?
+
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) lets you build servers that expose data and functionality to LLM applications in a secure, standardized way. Think of it like a web API, but specifically designed for LLM interactions. MCP servers can:
+
+- Expose data through **Resources** (think GET endpoints; load info into context)
+- Provide functionality through **Tools** (think POST/PUT endpoints; execute actions)
+- Define interaction patterns through **Prompts** (reusable templates)
+- And more!
+
+FlashMCP provides a high-level, Pythonic interface for building and interacting with these servers.
+
+## Why FlashMCP?
+
+The MCP protocol is powerful but implementing it involves a lot of boilerplate - server setup, protocol handlers, content types, error management. FlashMCP handles all the complex protocol details and server management, so you can focus on building great tools. It’s designed to be high-level and Pythonic; in most cases, decorating a function is all you need.
+
+FlashMCP aims to be:
+
+
+🚀 **Fast:** High-level interface means less code and faster development
+
+🍀 **Simple:** Build MCP servers with minimal boilerplate
+
+🐍 **Pythonic:** Feels natural to Python developers
+
+🔍 **Complete:** FlashMCP aims to provide a full implementation of the core MCP specification for both servers and clients
+
+## Key Features
+
+### Servers
+- **Create** servers with minimal boilerplate using intuitive decorators
+- **Proxy** existing servers to modify configuration or transport
+- **Compose** servers by into complex applications
+- **Generate** servers from OpenAPI specs or FastAPI objects
+
+### Clients
+- **Interact** with MCP servers programmatically
+- **Connect** to any MCP server using any transport
+- **Test** your servers without manual intervention
+- **Innovate** with core MCP capabilities like LLM sampling
+
+
+## What's New in v2?
+
+FlashMCP 1.0 made it so easy to build MCP servers that it's now part of the [official Model Context Protocol Python SDK](https://github.com/modelcontextprotocol/python-sdk)! For basic use cases, you can use the upstream version by importing `mcp.server.FlashMCP.FlashMCP` (or installing `FlashMCP=1.0`). 
+
+Based on how the MCP ecosystem is evolving, FlashMCP 2.0 builds on that foundation to introduce a variety of new features (and more experimental ideas). It adds advanced features like proxying and composing MCP servers, as well as automatically generating them from OpenAPI specs or FastAPI objects. FlashMCP 2.0 also introduces new client-side functionality like LLM sampling.
+
+
+## Documentation
+
+📚 FlashMCP's documentation is available at [goFlashMCP.com](https://goFlashMCP.com).
+
+---
+
+### Installation
 
 We strongly recommend installing FlashMCP with [uv](https://docs.astral.sh/uv/), as it is required for deploying servers via the CLI:
 
@@ -117,7 +152,7 @@ cd FlashMCP
 uv sync
 ```
 
-## Quickstart
+### Quickstart
 
 Let's create a simple MCP server that exposes a calculator tool and some data:
 
@@ -146,23 +181,8 @@ You can install this server in [Claude Desktop](https://claude.ai/download) and 
 FlashMCP install server.py
 ```
 
-Alternatively, you can test it with the MCP Inspector:
-```bash
-FlashMCP dev server.py
-```
-
 ![MCP Inspector](/docs/assets/demo-inspector.png)
 
-## What is MCP?
-
-The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) lets you build servers that expose data and functionality to LLM applications in a secure, standardized way. Think of it like a web API, but specifically designed for LLM interactions. MCP servers can:
-
-- Expose data through **Resources** (think GET endpoints; load info into context)
-- Provide functionality through **Tools** (think POST/PUT endpoints; execute actions)
-- Define interaction patterns through **Prompts** (reusable templates)
-- And more!
-
-FlashMCP provides a high-level, Pythonic interface for building and interacting with these servers.
 
 ## Core Concepts
 
