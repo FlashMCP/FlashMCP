@@ -25,7 +25,7 @@ class HueAttributes(TypedDict, total=False):
 lights_mcp = FlashMCP(
     "Hue Lights Service (phue2)",
     dependencies=[
-        "smart_home@git+https://github.com/jlowin/FlashMCP.git@n8example#subdirectory=examples/smart_home",
+        "smart_home@git+https://github.com/jlowin/FlashMCP.git#subdirectory=examples/smart_home",
     ],
 )
 
