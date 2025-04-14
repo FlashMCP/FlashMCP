@@ -17,5 +17,9 @@ class ToolError(FlashMCPError):
     """Error in tool operations."""
 
 
+class PromptError(FlashMCPError):
+    """Error in prompt operations."""
+
+
 class InvalidSignature(Exception):
     """Invalid signature for use with FlashMCP."""

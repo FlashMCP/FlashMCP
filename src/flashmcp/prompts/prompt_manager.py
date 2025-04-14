@@ -3,6 +3,7 @@
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from FlashMCP.exceptions import PromptError
 from FlashMCP.prompts.prompt import Message, Prompt, PromptResult
 from FlashMCP.settings import DuplicateBehavior
 from FlashMCP.utilities.logging import get_logger
@@ -61,7 +62,7 @@ class PromptManager:
         """Render a prompt by name with arguments."""
         prompt = self.get_prompt(name)
         if not prompt:
-            raise ValueError(f"Unknown prompt: {name}")
+            raise PromptError(f"Unknown prompt: {name}")
 
         return await prompt.render(arguments)
 

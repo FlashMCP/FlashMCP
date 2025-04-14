@@ -118,7 +118,7 @@ class Context(BaseModel, Generic[ServerSessionT, LifespanContextT]):
         assert self._FlashMCP is not None, (
             "Context is not available outside of a request"
         )
-        return await self._FlashMCP.read_resource(uri)
+        return await self._FlashMCP._mcp_read_resource(uri)
 
     async def log(
         self,
