@@ -1,5 +1,6 @@
 import pytest
 
+from FlashMCP.exceptions import PromptError
 from FlashMCP.prompts import Prompt
 from FlashMCP.prompts.prompt import PromptArgument, TextContent, UserMessage
 from FlashMCP.prompts.prompt_manager import PromptManager
@@ -97,7 +98,7 @@ class TestPromptManager:
     async def test_render_unknown_prompt(self):
         """Test rendering a non-existent prompt."""
         manager = PromptManager()
-        with pytest.raises(ValueError, match="Unknown prompt: unknown"):
+        with pytest.raises(PromptError, match="Unknown prompt: unknown"):
             await manager.render_prompt("unknown")
 
     @pytest.mark.anyio

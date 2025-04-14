@@ -4,6 +4,7 @@ from tempfile import NamedTemporaryFile
 import pytest
 from pydantic import AnyUrl, FileUrl
 
+from FlashMCP.exceptions import ResourceError
 from FlashMCP.resources import (
     FileResource,
     FunctionResource,
@@ -156,7 +157,7 @@ class TestResourceManager:
     async def test_get_unknown_resource(self):
         """Test getting a non-existent resource."""
         manager = ResourceManager()
-        with pytest.raises(ValueError, match="Unknown resource"):
+        with pytest.raises(ResourceError, match="Unknown resource"):
             await manager.get_resource(AnyUrl("unknown://test"))
 
     def test_list_resources(self, temp_file: Path):
