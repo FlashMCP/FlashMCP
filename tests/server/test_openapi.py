@@ -694,7 +694,7 @@ class TestMountFlashMCP:
         """Test mounting an OpenAPI server."""
         mcp = FlashMCP("MainApp")
 
-        mcp.mount("fastapi", FlashMCP_openapi_server)
+        mcp.import_server("fastapi", FlashMCP_openapi_server)
 
         # Check that resources are available with prefixed URIs
         resources = await mcp._mcp_list_resources()
