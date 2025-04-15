@@ -308,7 +308,6 @@ Server behavior, like transport settings (host, port for SSE) and how duplicate 
 
 ```python
 from FlashMCP import FlashMCP
-from FlashMCP.settings import DuplicateBehavior
 
 # Configure during initialization
 mcp = FlashMCP(
@@ -332,4 +331,3 @@ print(mcp.settings.on_duplicate_tools) # Output: "error"
 - **`on_duplicate_prompts`**: How to handle duplicate prompt registrations
 
 All of these can be configured directly as parameters when creating the `FlashMCP` instance.
-
