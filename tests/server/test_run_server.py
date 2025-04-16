@@ -93,6 +93,6 @@
 
 
 # class TestRunServerSSE:
-#     @pytest.mark.anyio
+#
 #     async def test_run_server_sse(self, FlashMCP_server: FlashMCP):
 #         pass
