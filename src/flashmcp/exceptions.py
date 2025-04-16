@@ -23,3 +23,11 @@ class PromptError(FlashMCPError):
 
 class InvalidSignature(Exception):
     """Invalid signature for use with FlashMCP."""
+
+
+class ClientError(Exception):
+    """Error in client operations."""
+
+
+class NotFoundError(Exception):
+    """Object not found."""
