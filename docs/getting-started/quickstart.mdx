@@ -32,7 +32,7 @@ from FlashMCP import FlashMCP
 
 mcp = FlashMCP("My MCP Server")
 
-@mcp.tool
+@mcp.tool()
 def greet(name: str) -> str:
     return f"Hello, {name}!"
 ```
@@ -48,7 +48,7 @@ from FlashMCP import FlashMCP, Client
 
 mcp = FlashMCP("My MCP Server")
 
-@mcp.tool
+@mcp.tool()
 def greet(name: str) -> str:
     return f"Hello, {name}!"
 
@@ -75,7 +75,7 @@ from FlashMCP import FlashMCP, Client
 
 mcp = FlashMCP("My MCP Server")
 
-@mcp.tool
+@mcp.tool()
 def greet(name: str) -> str:
     return f"Hello, {name}!"
 
