@@ -180,13 +180,17 @@ def _import_server(file: Path, server_object: str | None = None):
 def version(ctx: Context):
     if ctx.resilient_parsing:
         return
+    try:
+        FlashMCP_path = f"~/{Path(__file__).resolve().parents[3].relative_to(Path.home())}"
+    except ValueError:
+        FlashMCP_path = str(Path(__file__).resolve().parents[3])
 
     info = {
         "FlashMCP version": FlashMCP.__version__,
         "MCP version": importlib.metadata.version("mcp"),
         "Python version": platform.python_version(),
         "Platform": platform.platform(),
-        "FlashMCP root path": f"~/{Path(__file__).resolve().parents[3].relative_to(Path.home())}",
+        "FlashMCP root path": FlashMCP_path,
     }
 
     g = Table.grid(padding=(0, 1))
