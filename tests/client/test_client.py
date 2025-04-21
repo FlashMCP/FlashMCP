@@ -1,10 +1,15 @@
 from typing import cast
+from typing_extensions import Unpack
+from collections.abc import AsyncIterator
+from mcp import ClientSession
+import contextlib
+from mcp.shared.memory import create_client_server_memory_streams
 
 import pytest
 from pydantic import AnyUrl
 
 from FlashMCP.client import Client
-from FlashMCP.client.transports import FlashMCPTransport
+from FlashMCP.client.transports import FlashMCPTransport, ClientTransport, SessionKwargs
 from FlashMCP.server.server import FlashMCP
 
 
@@ -159,6 +164,38 @@ async def test_client_connection(FlashMCP_server):
     # After connection
     assert not client.is_connected()
 
+async def test_client_nested_context_manager(FlashMCP_server):
+    """Test that the client connects and disconnects once in nested context manager."""
+    class MockTransport(ClientTransport):
+        def __init__(self):
+            self._connected = False
+
+        @contextlib.asynccontextmanager
+        async def connect_session(
+            self, **session_kwargs: Unpack[SessionKwargs],
+        ) -> AsyncIterator[ClientSession]:
+            assert not self._connected, "Transport is connected multiple times"
+            self._connected = True
+            async with create_client_server_memory_streams() as (
+                _,
+                server_streams,
+            ):
+                yield ClientSession(*server_streams)
+
+    client = Client(transport=MockTransport())
+
+    # Before connection
+    assert not client.is_connected()
+
+    # During connection
+    async with client:
+        assert client.is_connected()
+
+        async with client:
+            assert client.is_connected()
+
+    # After connection
+    assert not client.is_connected()
 
 async def test_resource_template(FlashMCP_server):
     """Test using a resource template with InMemoryClient."""
