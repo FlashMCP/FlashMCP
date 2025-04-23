@@ -186,7 +186,7 @@ def version(ctx: Context):
         "MCP version": importlib.metadata.version("mcp"),
         "Python version": platform.python_version(),
         "Platform": platform.platform(),
-        "FlashMCP root path": f"~/{Path(__file__).resolve().parents[3].relative_to(Path.home())}",
+        "FlashMCP root path": Path(FlashMCP.__file__).resolve().parents[1],
     }
 
     g = Table.grid(padding=(0, 1))
