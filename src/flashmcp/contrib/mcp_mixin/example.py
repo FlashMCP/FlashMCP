@@ -2,13 +2,13 @@
 
 import asyncio
 
-from contrib.mcp_mixin import (
+from FlashMCP import FlashMCP
+from FlashMCP.contrib.mcp_mixin import (
     MCPMixin,
     mcp_prompt,
     mcp_resource,
     mcp_tool,
 )
-from FlashMCP import FlashMCP
 
 mcp = FlashMCP()
 
