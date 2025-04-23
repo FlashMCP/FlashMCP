@@ -3,12 +3,12 @@ from typing import Any
 import pytest
 from mcp.types import EmbeddedResource, ImageContent, TextContent
 
-from contrib.bulk_tool_caller.bulk_tool_caller import (
+from FlashMCP import FlashMCP
+from FlashMCP.contrib.bulk_tool_caller.bulk_tool_caller import (
     BulkToolCaller,
     CallToolRequest,
     CallToolRequestResult,
 )
-from FlashMCP import FlashMCP
 
 ContentType = TextContent | ImageContent | EmbeddedResource
 

@@ -1,7 +1,7 @@
 """Sample code for FlashMCP using MCPMixin."""
 
-from contrib.bulk_tool_caller import BulkToolCaller
 from FlashMCP import FlashMCP
+from FlashMCP.contrib.bulk_tool_caller import BulkToolCaller
 
 mcp = FlashMCP()
 

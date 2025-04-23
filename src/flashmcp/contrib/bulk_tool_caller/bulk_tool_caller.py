@@ -3,10 +3,14 @@ from typing import Any
 from mcp.types import CallToolResult
 from pydantic import BaseModel, Field
 
-from contrib.mcp_mixin.mcp_mixin import _DEFAULT_SEPARATOR_TOOL, MCPMixin, mcp_tool
 from FlashMCP import FlashMCP
 from FlashMCP.client import Client
 from FlashMCP.client.transports import FlashMCPTransport
+from FlashMCP.contrib.mcp_mixin.mcp_mixin import (
+    _DEFAULT_SEPARATOR_TOOL,
+    MCPMixin,
+    mcp_tool,
+)
 
 
 class CallToolRequest(BaseModel):
