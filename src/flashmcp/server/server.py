@@ -182,7 +182,11 @@ class FlashMCP(Generic[LifespanResultT]):
         name: str | None = None,
         instructions: str | None = None,
         lifespan: (
-            Callable[["FlashMCP"], AbstractAsyncContextManager[LifespanResultT]] | None
+            Callable[
+                ["FlashMCP[LifespanResultT]"],
+                AbstractAsyncContextManager[LifespanResultT],
+            ]
+            | None
         ) = None,
         tags: set[str] | None = None,
         **settings: Any,
@@ -738,7 +742,7 @@ class FlashMCP(Generic[LifespanResultT]):
     def mount(
         self,
         prefix: str,
-        server: "FlashMCP",
+        server: "FlashMCP[LifespanResultT]",
         tool_separator: str | None = None,
         resource_separator: str | None = None,
         prompt_separator: str | None = None,
@@ -763,7 +767,7 @@ class FlashMCP(Generic[LifespanResultT]):
     async def import_server(
         self,
         prefix: str,
-        server: "FlashMCP",
+        server: "FlashMCP[LifespanResultT]",
         tool_separator: str | None = None,
         resource_separator: str | None = None,
         prompt_separator: str | None = None,

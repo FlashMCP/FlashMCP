@@ -14,6 +14,7 @@ __all__ = [
     "FlashMCP",
     "Context",
     "client",
+    "Client",
     "settings",
     "Image",
 ]
