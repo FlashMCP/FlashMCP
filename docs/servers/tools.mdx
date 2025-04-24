@@ -209,13 +209,18 @@ FlashMCP automatically converts the value returned by your function into the app
 - **`str`**: Sent as `TextContent`.
 - **`dict`, `list`, Pydantic `BaseModel`**: Serialized to a JSON string and sent as `TextContent`.
 - **`bytes`**: Base64 encoded and sent as `BlobResourceContents` (often within an `EmbeddedResource`).
-- **`FlashMCP.utilities.types.Image`**: A helper class to easily return image data. Sent as `ImageContent`.
+- **`FlashMCP.Image`**: A helper class for easily returning image data. Sent as `ImageContent`.
 - **`None`**: Results in an empty response (no content is sent back to the client).
 
 ```python
-from FlashMCP.utilities.types import Image
-from PIL import Image as PILImage
+from FlashMCP import FlashMCP, Image
 import io
+try:
+    from PIL import Image as PILImage
+except ImportError:
+    raise ImportError("Please install the `pillow` library to run this example.")
+
+mcp = FlashMCP("Image Demo")
 
 @mcp.tool()
 def generate_image(width: int, height: int, color: str) -> Image:
