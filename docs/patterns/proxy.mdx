@@ -14,18 +14,20 @@ FlashMCP provides a powerful proxying capability that allows one FlashMCP server
 
 Proxying means setting up a FlashMCP server that doesn't implement its own tools or resources directly. Instead, when it receives a request (like `tools/call` or `resources/read`), it forwards that request to a *backend* MCP server, receives the response, and then relays that response back to the original client.
 
+
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant ProxyServer as FlashMCP Proxy Server
-    participant BackendServer as Backend MCP Server
+    participant ClientApp as Your Client (e.g., Claude Desktop)
+    participant FlashMCPProxy as FlashMCP Proxy Server
+    participant BackendServer as Backend MCP Server (e.g., remote SSE)
 
-    Client->>ProxyServer: Request (e.g., stdio)
-    ProxyServer->>BackendServer: Request (e.g., sse)
-    BackendServer-->>ProxyServer: Response (e.g., sse)
-    ProxyServer-->>Client: Response (e.g., stdio)
+    ClientApp->>FlashMCPProxy: MCP Request (e.g. stdio)
+    Note over FlashMCPProxy, BackendServer: Proxy forwards the request
+    FlashMCPProxy->>BackendServer: MCP Request (e.g. sse)
+    BackendServer-->>FlashMCPProxy: MCP Response (e.g. sse)
+    Note over ClientApp, FlashMCPProxy: Proxy relays the response
+    FlashMCPProxy-->>ClientApp: MCP Response (e.g. stdio)
 ```
-
 ### Use Cases
 
 -   **Transport Bridging**: Expose a server running on one transport (e.g., a remote SSE server) via a different transport (e.g., local Stdio for Claude Desktop).
