@@ -112,7 +112,7 @@ FlashMCP aims to be:
 ### Servers
 - **Create** servers with minimal boilerplate using intuitive decorators
 - **Proxy** existing servers to modify configuration or transport
-- **Compose** servers by into complex applications
+- **Compose**  servers into complex applications
 - **Generate** servers from OpenAPI specs or FastAPI objects
 
 ### Clients
