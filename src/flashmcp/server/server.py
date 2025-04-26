@@ -1,5 +1,7 @@
 """FlashMCP - A more ergonomic interface for MCP servers."""
 
+from __future__ import annotations
+
 import datetime
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import (
@@ -63,7 +65,7 @@ class MountedServer:
     def __init__(
         self,
         prefix: str,
-        server: "FlashMCP",
+        server: FlashMCP,
         tool_separator: str | None = None,
         resource_separator: str | None = None,
         prompt_separator: str | None = None,
@@ -149,7 +151,7 @@ class TimedCache:
 
 
 @asynccontextmanager
-async def default_lifespan(server: "FlashMCP") -> AsyncIterator[Any]:
+async def default_lifespan(server: FlashMCP) -> AsyncIterator[Any]:
     """Default lifespan context manager that does nothing.
 
     Args:
@@ -162,8 +164,8 @@ async def default_lifespan(server: "FlashMCP") -> AsyncIterator[Any]:
 
 
 def _lifespan_wrapper(
-    app: "FlashMCP",
-    lifespan: Callable[["FlashMCP"], AbstractAsyncContextManager[LifespanResultT]],
+    app: FlashMCP,
+    lifespan: Callable[[FlashMCP], AbstractAsyncContextManager[LifespanResultT]],
 ) -> Callable[
     [MCPServer[LifespanResultT]], AbstractAsyncContextManager[LifespanResultT]
 ]:
@@ -183,7 +185,7 @@ class FlashMCP(Generic[LifespanResultT]):
         instructions: str | None = None,
         lifespan: (
             Callable[
-                ["FlashMCP[LifespanResultT]"],
+                [FlashMCP[LifespanResultT]],
                 AbstractAsyncContextManager[LifespanResultT],
             ]
             | None
@@ -277,7 +279,7 @@ class FlashMCP(Generic[LifespanResultT]):
         self._mcp_server.get_prompt()(self._mcp_get_prompt)
         self._mcp_server.list_resource_templates()(self._mcp_list_resource_templates)
 
-    def get_context(self) -> "Context[ServerSession, LifespanResultT]":
+    def get_context(self) -> Context[ServerSession, LifespanResultT]:
         """
         Returns a Context object. Note that the context will only be valid
         during a request; outside a request, most methods will error.
@@ -770,7 +772,7 @@ class FlashMCP(Generic[LifespanResultT]):
     def mount(
         self,
         prefix: str,
-        server: "FlashMCP[LifespanResultT]",
+        server: FlashMCP[LifespanResultT],
         tool_separator: str | None = None,
         resource_separator: str | None = None,
         prompt_separator: str | None = None,
@@ -795,7 +797,7 @@ class FlashMCP(Generic[LifespanResultT]):
     async def import_server(
         self,
         prefix: str,
-        server: "FlashMCP[LifespanResultT]",
+        server: FlashMCP[LifespanResultT],
         tool_separator: str | None = None,
         resource_separator: str | None = None,
         prompt_separator: str | None = None,
@@ -869,7 +871,7 @@ class FlashMCP(Generic[LifespanResultT]):
     @classmethod
     def from_openapi(
         cls, openapi_spec: dict[str, Any], client: httpx.AsyncClient, **settings: Any
-    ) -> "FlashMCPOpenAPI":
+    ) -> FlashMCPOpenAPI:
         """
         Create a FlashMCP server from an OpenAPI specification.
         """
@@ -879,8 +881,8 @@ class FlashMCP(Generic[LifespanResultT]):
 
     @classmethod
     def from_fastapi(
-        cls, app: "Any", name: str | None = None, **settings: Any
-    ) -> "FlashMCPOpenAPI":
+        cls, app: Any, name: str | None = None, **settings: Any
+    ) -> FlashMCPOpenAPI:
         """
         Create a FlashMCP server from a FastAPI application.
         """
@@ -898,7 +900,7 @@ class FlashMCP(Generic[LifespanResultT]):
         )
 
     @classmethod
-    def from_client(cls, client: "Client", **settings: Any) -> "FlashMCPProxy":
+    def from_client(cls, client: Client, **settings: Any) -> FlashMCPProxy:
         """
         Create a FlashMCP proxy server from a FlashMCP client.
         """
