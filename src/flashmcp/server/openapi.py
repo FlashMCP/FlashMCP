@@ -10,12 +10,12 @@ from re import Pattern
 from typing import TYPE_CHECKING, Any, Literal
 
 import httpx
-from mcp.types import TextContent
+from mcp.types import EmbeddedResource, ImageContent, TextContent
 from pydantic.networks import AnyUrl
 
 from FlashMCP.resources import Resource, ResourceTemplate
 from FlashMCP.server.server import FlashMCP
-from FlashMCP.tools.tool import Tool
+from FlashMCP.tools.tool import Tool, _convert_to_content
 from FlashMCP.utilities import openapi
 from FlashMCP.utilities.func_metadata import func_metadata
 from FlashMCP.utilities.logging import get_logger
@@ -239,9 +239,14 @@ class OpenAPITool(Tool):
             # Handle request errors (connection, timeout, etc.)
             raise ValueError(f"Request error: {str(e)}")
 
-    async def run(self, arguments: dict[str, Any], context: Any = None) -> Any:
+    async def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> list[TextContent | ImageContent | EmbeddedResource]:
         """Run the tool with arguments and optional context."""
-        return await self._execute_request(**arguments, context=context)
+        response = await self._execute_request(**arguments, context=context)
+        return _convert_to_content(response)
 
 
 class OpenAPIResource(Resource):
@@ -605,13 +610,4 @@ class FlashMCPOpenAPI(FlashMCP):
 
         context = self.get_context()
         result = await self._tool_manager.call_tool(name, arguments, context=context)
-
-        # For other tools, ensure the response is wrapped in TextContent
-        if isinstance(result, dict | str):
-            if isinstance(result, dict):
-                result_text = json.dumps(result)
-            else:
-                result_text = result
-            return [TextContent(text=result_text, type="text")]
-
         return result
