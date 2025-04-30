@@ -14,7 +14,12 @@ from pydantic.networks import AnyUrl
 
 from FlashMCP import FlashMCP
 from FlashMCP.client import Client
-from FlashMCP.server.openapi import FlashMCPOpenAPI
+from FlashMCP.server.openapi import (
+    FlashMCPOpenAPI,
+    OpenAPIResource,
+    OpenAPIResourceTemplate,
+    OpenAPITool,
+)
 
 
 class User(BaseModel):
@@ -126,6 +131,30 @@ async def test_create_fastapi_server_classmethod(fastapi_app: FastAPI):
     server = FlashMCP.from_fastapi(fastapi_app)
     assert isinstance(server, FlashMCPOpenAPI)
     assert server.name == "FastAPI App"
+
+
+async def test_create_openapi_server_with_timeout(
+    fastapi_app: FastAPI, api_client: httpx.AsyncClient
+):
+    server = FlashMCPOpenAPI(
+        openapi_spec=fastapi_app.openapi(),
+        client=api_client,
+        name="Test App",
+        timeout=1.0,
+    )
+    assert server._timeout == 1.0
+
+    for tool in (await server.get_tools()).values():
+        assert isinstance(tool, OpenAPITool)
+        assert tool._timeout == 1.0
+
+    for resource in (await server.get_resources()).values():
+        assert isinstance(resource, OpenAPIResource)
+        assert resource._timeout == 1.0
+
+    for template in (await server.get_resource_templates()).values():
+        assert isinstance(template, OpenAPIResourceTemplate)
+        assert template._timeout == 1.0
 
 
 class TestTools:
