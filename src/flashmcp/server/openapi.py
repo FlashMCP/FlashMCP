@@ -448,7 +448,7 @@ class FlashMCPOpenAPI(FlashMCP):
             client: httpx AsyncClient for making HTTP requests
             name: Optional name for the server
             route_maps: Optional list of RouteMap objects defining route mappings
-            default_mime_type: Default MIME type for resources
+            timeout: Optional timeout (in seconds) for all requests
             **settings: Additional settings for FlashMCP
         """
         super().__init__(name=name or "OpenAPI FlashMCP", **settings)
