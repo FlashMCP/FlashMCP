@@ -59,6 +59,7 @@ from FlashMCP.resources.template import ResourceTemplate
 from FlashMCP.tools import ToolManager
 from FlashMCP.tools.tool import Tool
 from FlashMCP.utilities.decorators import DecoratedFunction
+from FlashMCP.utilities.http import RequestMiddleware
 from FlashMCP.utilities.logging import configure_logging, get_logger
 
 if TYPE_CHECKING:
@@ -822,10 +823,11 @@ class FlashMCP(Generic[LifespanResultT]):
         log_level: str | None = None,
     ) -> None:
         """Run the server using SSE transport."""
-        starlette_app = self.sse_app()
+        app = self.sse_app()
+        app = RequestMiddleware(app)
 
         config = uvicorn.Config(
-            starlette_app,
+            app,
             host=host or self.settings.host,
             port=port or self.settings.port,
             log_level=log_level or self.settings.log_level.lower(),
