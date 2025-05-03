@@ -11,6 +11,7 @@ from pydantic import BaseModel, BeforeValidator, Field
 
 from FlashMCP.exceptions import ToolError
 from FlashMCP.utilities.func_metadata import FuncMetadata, func_metadata
+from FlashMCP.utilities.logging import get_logger
 from FlashMCP.utilities.types import (
     Image,
     _convert_set_defaults,
@@ -22,6 +23,8 @@ if TYPE_CHECKING:
     from mcp.shared.context import LifespanContextT
 
     from FlashMCP.server import Context
+
+logger = get_logger(__name__)
 
 
 class Tool(BaseModel):
@@ -183,7 +186,16 @@ def _convert_to_content(
 
     if not isinstance(result, str):
         if serializer is not None:
-            result = serializer(result)
+            try:
+                result = serializer(result)
+            except Exception as e:
+                logger.warning(
+                    "Error serializing tool result: %s",
+                    e,
+                    exc_info=True,
+                )
+
+            result = pydantic_core.to_json(result, fallback=str, indent=2).decode()
         else:
             result = pydantic_core.to_json(result, fallback=str, indent=2).decode()
 
