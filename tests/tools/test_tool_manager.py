@@ -401,7 +401,7 @@ class TestCallTools:
             return json.dumps(data)
 
         # Instantiate FlashMCP with the custom serializer
-        mcp = FlashMCP(serializer=custom_serializer)
+        mcp = FlashMCP(tool_serializer=custom_serializer)
         manager = mcp._tool_manager
 
         def get_data() -> dict:
