@@ -1,4 +1,5 @@
 import json
+from contextlib import asynccontextmanager
 
 import pytest
 from mcp.server.lowlevel.helper_types import ReadResourceContents
@@ -8,6 +9,7 @@ from FlashMCP import FlashMCP
 from FlashMCP.client import Client
 from FlashMCP.client.transports import FlashMCPTransport
 from FlashMCP.exceptions import NotFoundError
+from FlashMCP.server.proxy import FlashMCPProxy
 
 
 class TestBasicMount:
@@ -427,3 +429,110 @@ class TestProxyServer:
         result = await main_app._mcp_get_prompt("proxy_welcome", {"name": "World"})
         assert result.messages is not None
         # The message should contain our welcome text
+
+
+class TestAsProxyKwarg:
+    """Test the as_proxy kwarg."""
+
+    async def test_as_proxy_defaults_false(self):
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub")
+
+        mcp.mount("sub", sub)
+
+        assert mcp._mounted_servers["sub"].server is sub
+
+    async def test_as_proxy_false(self):
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub")
+
+        mcp.mount("sub", sub, as_proxy=False)
+
+        assert mcp._mounted_servers["sub"].server is sub
+
+    async def test_as_proxy_true(self):
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub")
+
+        mcp.mount("sub", sub, as_proxy=True)
+
+        assert mcp._mounted_servers["sub"].server is not sub
+        assert isinstance(mcp._mounted_servers["sub"].server, FlashMCPProxy)
+
+    async def test_as_proxy_defaults_true_if_lifespan(self):
+        @asynccontextmanager
+        async def lifespan(mcp: FlashMCP):
+            yield
+
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub", lifespan=lifespan)
+
+        mcp.mount("sub", sub)
+
+        assert mcp._mounted_servers["sub"].server is not sub
+        assert isinstance(mcp._mounted_servers["sub"].server, FlashMCPProxy)
+
+    async def test_as_proxy_ignored_for_proxy_mounts_default(self):
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub")
+        sub_proxy = FlashMCP.from_client(Client(transport=FlashMCPTransport(sub)))
+
+        mcp.mount("sub", sub_proxy)
+
+        assert mcp._mounted_servers["sub"].server is sub_proxy
+
+    async def test_as_proxy_ignored_for_proxy_mounts_false(self):
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub")
+        sub_proxy = FlashMCP.from_client(Client(transport=FlashMCPTransport(sub)))
+
+        mcp.mount("sub", sub_proxy, as_proxy=False)
+
+        assert mcp._mounted_servers["sub"].server is sub_proxy
+
+    async def test_as_proxy_ignored_for_proxy_mounts_true(self):
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub")
+        sub_proxy = FlashMCP.from_client(Client(transport=FlashMCPTransport(sub)))
+
+        mcp.mount("sub", sub_proxy, as_proxy=True)
+
+        assert mcp._mounted_servers["sub"].server is sub_proxy
+
+    async def test_as_proxy_mounts_still_have_live_link(self):
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub")
+
+        mcp.mount("sub", sub, as_proxy=True)
+
+        assert len(await mcp.get_tools()) == 0
+
+        @sub.tool()
+        def hello():
+            return "hi"
+
+        assert len(await mcp.get_tools()) == 1
+
+    async def test_sub_lifespan_is_executed(self):
+        lifespan_check = []
+
+        @asynccontextmanager
+        async def lifespan(mcp: FlashMCP):
+            lifespan_check.append("start")
+            yield
+
+        mcp = FlashMCP("Main")
+        sub = FlashMCP("Sub", lifespan=lifespan)
+
+        @sub.tool()
+        def hello():
+            return "hi"
+
+        mcp.mount("sub", sub, as_proxy=True)
+
+        assert lifespan_check == []
+
+        async with Client(mcp) as client:
+            await client.call_tool("sub_hello", {})
+
+        assert lifespan_check == ["start"]
