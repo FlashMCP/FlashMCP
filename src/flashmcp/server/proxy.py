@@ -24,7 +24,6 @@ from FlashMCP.resources import Resource, ResourceTemplate
 from FlashMCP.server.context import Context
 from FlashMCP.server.server import FlashMCP
 from FlashMCP.tools.tool import Tool
-from FlashMCP.utilities.func_metadata import func_metadata
 from FlashMCP.utilities.logging import get_logger
 
 if TYPE_CHECKING:
@@ -53,7 +52,6 @@ class ProxyTool(Tool):
             description=tool.description,
             parameters=tool.inputSchema,
             fn=_proxy_passthrough,
-            fn_metadata=func_metadata(_proxy_passthrough),
             is_async=True,
         )
 
