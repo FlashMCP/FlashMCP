@@ -18,7 +18,7 @@ from pydantic import AnyUrl, Field
 
 from FlashMCP import Client, Context, FlashMCP
 from FlashMCP.exceptions import ClientError
-from FlashMCP.prompts.prompt import EmbeddedResource, Message, UserMessage
+from FlashMCP.prompts.prompt import EmbeddedResource, PromptMessage
 from FlashMCP.resources import FileResource, FunctionResource
 from FlashMCP.utilities.types import Image
 
@@ -1267,8 +1267,8 @@ class TestPrompts:
 
         async with Client(mcp) as client:
             result = await client.get_prompt("fn", {"name": "World"})
-            assert len(result) == 1
-            message = result[0]
+            assert len(result.messages) == 1
+            message = result.messages[0]
             assert message.role == "user"
             content = message.content
             assert isinstance(content, TextContent)
@@ -1279,8 +1279,9 @@ class TestPrompts:
         mcp = FlashMCP()
 
         @mcp.prompt()
-        def fn() -> Message:
-            return UserMessage(
+        def fn() -> PromptMessage:
+            return PromptMessage(
+                role="user",
                 content=EmbeddedResource(
                     type="resource",
                     resource=TextResourceContents(
@@ -1288,13 +1289,13 @@ class TestPrompts:
                         text="File contents",
                         mimeType="text/plain",
                     ),
-                )
+                ),
             )
 
         async with Client(mcp) as client:
             result = await client.get_prompt("fn")
-            assert result[0].role == "user"
-            content = result[0].content
+            assert result.messages[0].role == "user"
+            content = result.messages[0].content
             assert isinstance(content, EmbeddedResource)
             resource = content.resource
             assert isinstance(resource, TextResourceContents)
@@ -1370,6 +1371,6 @@ class TestPromptContext:
 
         async with Client(mcp) as client:
             result = await client.get_prompt("prompt_fn", {"name": "World"})
-            assert len(result) == 1
-            message = result[0]
+            assert len(result.messages) == 1
+            message = result.messages[0]
             assert message.role == "user"

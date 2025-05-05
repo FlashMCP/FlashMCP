@@ -7,7 +7,7 @@ from mcp.shared.context import LifespanContextT
 from FlashMCP import Context
 from FlashMCP.exceptions import NotFoundError
 from FlashMCP.prompts import Prompt
-from FlashMCP.prompts.prompt import TextContent, UserMessage
+from FlashMCP.prompts.prompt import PromptMessage, TextContent
 from FlashMCP.prompts.prompt_manager import PromptManager
 
 
@@ -147,28 +147,36 @@ class TestPromptManager:
         """Test rendering a prompt."""
 
         def fn() -> str:
+            """An example prompt."""
             return "Hello, world!"
 
         manager = PromptManager()
         prompt = Prompt.from_function(fn)
         manager.add_prompt(prompt)
-        messages = await manager.render_prompt("fn")
-        assert messages == [
-            UserMessage(content=TextContent(type="text", text="Hello, world!"))
+        result = await manager.render_prompt("fn")
+        assert result.description == "An example prompt."
+        assert result.messages == [
+            PromptMessage(
+                role="user", content=TextContent(type="text", text="Hello, world!")
+            )
         ]
 
     async def test_render_prompt_with_args(self):
         """Test rendering a prompt with arguments."""
 
         def fn(name: str) -> str:
+            """An example prompt."""
             return f"Hello, {name}!"
 
         manager = PromptManager()
         prompt = Prompt.from_function(fn)
         manager.add_prompt(prompt)
-        messages = await manager.render_prompt("fn", arguments={"name": "World"})
-        assert messages == [
-            UserMessage(content=TextContent(type="text", text="Hello, World!"))
+        result = await manager.render_prompt("fn", arguments={"name": "World"})
+        assert result.description == "An example prompt."
+        assert result.messages == [
+            PromptMessage(
+                role="user", content=TextContent(type="text", text="Hello, World!")
+            )
         ]
 
     async def test_render_unknown_prompt(self):
