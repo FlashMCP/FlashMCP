@@ -5,8 +5,10 @@ from __future__ import annotations as _annotations
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
+from mcp import GetPromptResult
+
 from FlashMCP.exceptions import NotFoundError
-from FlashMCP.prompts.prompt import Message, Prompt, PromptResult
+from FlashMCP.prompts.prompt import Prompt, PromptResult
 from FlashMCP.settings import DuplicateBehavior
 from FlashMCP.utilities.logging import get_logger
 
@@ -81,13 +83,18 @@ class PromptManager:
         name: str,
         arguments: dict[str, Any] | None = None,
         context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> list[Message]:
+    ) -> GetPromptResult:
         """Render a prompt by name with arguments."""
         prompt = self.get_prompt(name)
         if not prompt:
             raise NotFoundError(f"Unknown prompt: {name}")
 
-        return await prompt.render(arguments, context=context)
+        messages = await prompt.render(arguments, context=context)
+
+        return GetPromptResult(
+            description=prompt.description,
+            messages=messages,
+        )
 
     def has_prompt(self, key: str) -> bool:
         """Check if a prompt exists."""
