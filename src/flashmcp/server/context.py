@@ -17,8 +17,8 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.networks import AnyUrl
 from starlette.requests import Request
 
+from FlashMCP.server.http import get_current_starlette_request
 from FlashMCP.server.server import FlashMCP
-from FlashMCP.utilities.http import get_current_starlette_request
 from FlashMCP.utilities.logging import get_logger
 
 logger = get_logger(__name__)
