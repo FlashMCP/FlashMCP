@@ -46,7 +46,7 @@ from FlashMCP.prompts import Prompt, PromptManager
 from FlashMCP.prompts.prompt import PromptResult
 from FlashMCP.resources import Resource, ResourceManager
 from FlashMCP.resources.template import ResourceTemplate
-from FlashMCP.server.http import RequestContextMiddleware, create_sse_app
+from FlashMCP.server.http import create_sse_app
 from FlashMCP.tools import ToolManager
 from FlashMCP.tools.tool import Tool
 from FlashMCP.utilities.cache import TimedCache
@@ -719,7 +719,7 @@ class FlashMCP(Generic[LifespanResultT]):
         # timeout to make it possible to close immediately. see
         # https://github.com/jlowin/FlashMCP/issues/296
         uvicorn_config.setdefault("timeout_graceful_shutdown", 0)
-        app = RequestContextMiddleware(self.sse_app())
+        app = self.sse_app()
 
         config = uvicorn.Config(
             app,
