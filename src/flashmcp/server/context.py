@@ -1,5 +1,6 @@
 from __future__ import annotations as _annotations
 
+import warnings
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
@@ -233,5 +234,14 @@ class Context:
 
     def get_http_request(self) -> Request:
         """Get the active starlette request."""
+
+        # Deprecation warning, added in FlashMCP 2.2.11
+        warnings.warn(
+            "Context.get_http_request() is deprecated and will be removed in a future version. "
+            "Use get_http_request() from FlashMCP.server.dependencies instead. "
+            "See https://goFlashMCP.com/patterns/http-requests for more details.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
         return FlashMCP.server.dependencies.get_http_request()
