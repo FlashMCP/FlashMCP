@@ -7,7 +7,7 @@ import uvicorn
 from mcp.types import TextContent, TextResourceContents
 
 from FlashMCP.client import Client
-from FlashMCP.client.transports import SSETransport
+from FlashMCP.client.transports import StreamableHttpTransport
 from FlashMCP.server.dependencies import get_http_request
 from FlashMCP.server.server import FlashMCP
 from FlashMCP.utilities.tests import run_server_in_process
@@ -43,9 +43,15 @@ def FlashMCP_server():
 
 def run_server(host: str, port: int) -> None:
     try:
-        app = FlashMCP_server().sse_app()
+        app = FlashMCP_server().streamable_http_app()
         server = uvicorn.Server(
-            config=uvicorn.Config(app=app, host=host, port=port, log_level="error")
+            config=uvicorn.Config(
+                app=app,
+                host=host,
+                port=port,
+                log_level="error",
+                lifespan="on",
+            )
         )
         server.run()
     except Exception as e:
@@ -57,13 +63,13 @@ def run_server(host: str, port: int) -> None:
 @pytest.fixture(autouse=True, scope="module")
 def sse_server() -> Generator[str, None, None]:
     with run_server_in_process(run_server) as url:
-        yield f"{url}/sse"
+        yield f"{url}/mcp"
 
 
 async def test_http_headers_resource(sse_server: str):
     """Test getting HTTP headers from the server."""
     async with Client(
-        transport=SSETransport(sse_server, headers={"X-DEMO-HEADER": "ABC"})
+        transport=StreamableHttpTransport(sse_server, headers={"X-DEMO-HEADER": "ABC"})
     ) as client:
         raw_result = await client.read_resource("request://headers")
         assert isinstance(raw_result[0], TextResourceContents)
@@ -75,7 +81,7 @@ async def test_http_headers_resource(sse_server: str):
 async def test_http_headers_tool(sse_server: str):
     """Test getting HTTP headers from the server."""
     async with Client(
-        transport=SSETransport(sse_server, headers={"X-DEMO-HEADER": "ABC"})
+        transport=StreamableHttpTransport(sse_server, headers={"X-DEMO-HEADER": "ABC"})
     ) as client:
         result = await client.call_tool("get_headers_tool")
         assert isinstance(result[0], TextContent)
@@ -87,7 +93,7 @@ async def test_http_headers_tool(sse_server: str):
 async def test_http_headers_prompt(sse_server: str):
     """Test getting HTTP headers from the server."""
     async with Client(
-        transport=SSETransport(sse_server, headers={"X-DEMO-HEADER": "ABC"})
+        transport=StreamableHttpTransport(sse_server, headers={"X-DEMO-HEADER": "ABC"})
     ) as client:
         result = await client.get_prompt("get_headers_prompt")
         assert isinstance(result.messages[0].content, TextContent)
