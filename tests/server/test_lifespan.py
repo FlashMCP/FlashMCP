@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 import anyio
 import pytest
-from mcp.server.FlashMCP import Context, FlashMCP
 from mcp.server.lowlevel.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from mcp.shared.message import SessionMessage
@@ -18,6 +17,8 @@ from mcp.types import (
     JSONRPCRequest,
 )
 from pydantic import TypeAdapter
+
+from FlashMCP import Context, FlashMCP
 
 
 @pytest.mark.anyio
