@@ -47,7 +47,13 @@ FlashMCP run server.py
 
 ### 📚 Documentation
 
-This readme provides only a high-level overview. For detailed guides, API references, and advanced patterns, please refer to the complete FlashMCP documentation at **[goFlashMCP.com](https://goFlashMCP.com)**.
+FlashMCP's complete documentation is available at **[goFlashMCP.com](https://goFlashMCP.com)**, including detailed guides, API references, and advanced patterns. This readme provides only a high-level overview.
+
+Documentation is also available in [llms.txt format](https://llmstxt.org/), which is a simple markdown standard that LLMs can consume easily. 
+
+There are two ways to access the LLM-friendly documentation:
+- [`llms.txt`](https://goFlashMCP.com/llms.txt) is essentially a sitemap, listing all the pages in the documentation.
+- [`llms-full.txt`](https://goFlashMCP.com/llms-full.txt) contains the entire documentation. Note this may exceed the context window of your LLM.
 
 ---
 
