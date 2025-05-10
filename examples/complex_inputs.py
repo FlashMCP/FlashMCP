@@ -8,7 +8,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from FlashMCP.server import FlashMCP
+from FlashMCP import FlashMCP
 
 mcp = FlashMCP("Shrimp Tank")
 
