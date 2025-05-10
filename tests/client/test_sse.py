@@ -58,7 +58,7 @@ def FlashMCP_server():
 
 def run_server(host: str, port: int) -> None:
     try:
-        app = FlashMCP_server().sse_app()
+        app = FlashMCP_server().http_app(transport="sse")
         server = uvicorn.Server(
             config=uvicorn.Config(app=app, host=host, port=port, log_level="error")
         )
@@ -96,7 +96,7 @@ async def test_http_headers(sse_server: str):
 
 def run_nested_server(host: str, port: int) -> None:
     try:
-        app = FlashMCP_server().sse_app()
+        app = FlashMCP_server().http_app(transport="sse")
         mount = Starlette(routes=[Mount("/nest-inner", app=app)])
         mount2 = Starlette(routes=[Mount("/nest-outer", app=mount)])
         server = uvicorn.Server(

@@ -43,7 +43,7 @@ def FlashMCP_server():
 
 def run_server(host: str, port: int) -> None:
     try:
-        app = FlashMCP_server().streamable_http_app()
+        app = FlashMCP_server().http_app()
         server = uvicorn.Server(
             config=uvicorn.Config(
                 app=app,
