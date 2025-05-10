@@ -44,7 +44,7 @@ FlashMCP root path:            ~/Developer/FlashMCP
 ```
 ## Upgrading from the Official MCP SDK
 
-Upgrading from the official MCP SDK's FlashMCP 1.0 to FlashMCP 2.0 is easy! The core server API is highly compatible, so after you install the `FlashMCP` package, just change your import statement from `from mcp.server.FlashMCP import FlashMCP` to `from FlashMCP import FlashMCP`. 
+Upgrading from the official MCP SDK's FlashMCP 1.0 to FlashMCP 2.0 is generally straightforward. The core server API is highly compatible, and in many cases, changing your import statement from `from mcp.server.FlashMCP import FlashMCP` to `from FlashMCP import FlashMCP` will be sufficient. 
 
 
 ```python {1-5}
@@ -56,8 +56,9 @@ from FlashMCP import FlashMCP
 
 mcp = FlashMCP("My MCP Server")
 ```
-
-While the 1.0 server API is very stable for common use cases, FlashMCP 2.0 introduces many new features (like the Client, proxying, composition) documented throughout this site. Review the documentation for details on new capabilities.
+<Warning>
+Prior to `FlashMCP==2.3.0` and `mcp==1.8.0`, the 2.x API always mirrored the 1.0 API. However, as the projects diverge, this can not be guaranteed. You may see deprecation warnings if you attempt to use 1.0 APIs in FlashMCP 2.x. Please refer to this documentation for details on new capabilities.
+</Warning>
 
 ## Installing for Development
 
