@@ -9,6 +9,17 @@ from starlette.applications import Starlette
 from FlashMCP import FlashMCP
 
 
+def test_FlashMCP_kwargs_settings_deprecation_warning():
+    """Test that passing settings as kwargs to FlashMCP raises a deprecation warning."""
+    with pytest.warns(
+        DeprecationWarning,
+        match="Passing settings as kwargs to the FlashMCP constructor is deprecated",
+    ):
+        server = FlashMCP("TestServer", host="127.0.0.2", port=8001)
+        assert server.settings.host == "127.0.0.2"
+        assert server.settings.port == 8001
+
+
 def test_sse_app_deprecation_warning():
     """Test that sse_app raises a deprecation warning."""
     server = FlashMCP("TestServer")
