@@ -14,6 +14,7 @@ from pydantic import BaseModel, BeforeValidator, Field, TypeAdapter, validate_ca
 
 from FlashMCP.server.dependencies import get_context
 from FlashMCP.utilities.json_schema import prune_params
+from FlashMCP.utilities.logging import get_logger
 from FlashMCP.utilities.types import (
     _convert_set_defaults,
     find_kwarg_by_type,
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     pass
 
 CONTENT_TYPES = TextContent | ImageContent | EmbeddedResource
+
+logger = get_logger(__name__)
 
 
 def Message(
@@ -192,13 +195,12 @@ class Prompt(BaseModel):
                             )
                         )
                 except Exception:
-                    raise ValueError(
-                        f"Could not convert prompt result to message: {msg}"
-                    )
+                    raise ValueError("Could not convert prompt result to message.")
 
             return messages
         except Exception as e:
-            raise ValueError(f"Error rendering prompt {self.name}: {e}")
+            logger.exception(f"Error rendering prompt {self.name}: {e}")
+            raise ValueError(f"Error rendering prompt {self.name}.")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Prompt):

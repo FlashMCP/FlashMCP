@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from mcp.types import EmbeddedResource, ImageContent, TextContent, ToolAnnotations
 
-from FlashMCP.exceptions import NotFoundError
+from FlashMCP.exceptions import NotFoundError, ToolError
 from FlashMCP.settings import DuplicateBehavior
 from FlashMCP.tools.tool import Tool
 from FlashMCP.utilities.logging import get_logger
@@ -102,4 +102,15 @@ class ToolManager:
         if not tool:
             raise NotFoundError(f"Unknown tool: {key}")
 
-        return await tool.run(arguments)
+        try:
+            return await tool.run(arguments)
+
+        # raise ToolErrors as-is
+        except ToolError as e:
+            logger.exception(f"Error calling tool {key!r}: {e}")
+            raise e
+
+        # raise other exceptions as ToolErrors without revealing internal details
+        except Exception as e:
+            logger.exception(f"Error calling tool {key!r}: {e}")
+            raise ToolError(f"Error calling tool {key!r}") from e
