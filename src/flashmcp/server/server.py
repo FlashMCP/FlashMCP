@@ -43,7 +43,7 @@ from starlette.routing import BaseRoute, Route
 
 import FlashMCP.server
 import FlashMCP.settings
-from FlashMCP.exceptions import NotFoundError, ResourceError
+from FlashMCP.exceptions import NotFoundError
 from FlashMCP.prompts import Prompt, PromptManager
 from FlashMCP.prompts.prompt import PromptResult
 from FlashMCP.resources import Resource, ResourceManager
@@ -385,16 +385,13 @@ class FlashMCP(Generic[LifespanResultT]):
         with FlashMCP.server.context.Context(FlashMCP=self):
             if self._resource_manager.has_resource(uri):
                 resource = await self._resource_manager.get_resource(uri)
-                try:
-                    content = await resource.read()
-                    return [
-                        ReadResourceContents(
-                            content=content, mime_type=resource.mime_type
-                        )
-                    ]
-                except Exception as e:
-                    logger.error(f"Error reading resource {uri}: {e}")
-                    raise ResourceError(str(e))
+                content = await self._resource_manager.read_resource(uri)
+                return [
+                    ReadResourceContents(
+                        content=content,
+                        mime_type=resource.mime_type,
+                    )
+                ]
             else:
                 for server in self._mounted_servers.values():
                     if server.match_resource(str(uri)):
