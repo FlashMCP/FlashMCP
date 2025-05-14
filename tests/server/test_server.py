@@ -1,6 +1,7 @@
 from typing import Annotated
 
 import pytest
+from mcp import McpError
 from mcp.types import (
     TextContent,
     TextResourceContents,
@@ -8,7 +9,7 @@ from mcp.types import (
 from pydantic import Field
 
 from FlashMCP import Client, FlashMCP
-from FlashMCP.exceptions import ClientError, NotFoundError
+from FlashMCP.exceptions import NotFoundError
 
 
 class TestCreateServer:
@@ -296,7 +297,7 @@ class TestResourceDecorator:
     async def test_no_resources_before_decorator(self):
         mcp = FlashMCP()
 
-        with pytest.raises(ClientError, match="Unknown resource"):
+        with pytest.raises(McpError, match="Unknown resource"):
             async with Client(mcp) as client:
                 await client.read_resource("resource://data")
 
