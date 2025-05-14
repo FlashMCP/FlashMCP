@@ -12,7 +12,7 @@ from pydantic import BaseModel, BeforeValidator, Field
 
 import FlashMCP
 from FlashMCP.server.dependencies import get_context
-from FlashMCP.utilities.json_schema import prune_params
+from FlashMCP.utilities.json_schema import compress_schema
 from FlashMCP.utilities.logging import get_logger
 from FlashMCP.utilities.types import (
     Image,
@@ -81,7 +81,11 @@ class Tool(BaseModel):
 
         context_kwarg = find_kwarg_by_type(fn, kwarg_type=Context)
         if context_kwarg:
-            schema = prune_params(schema, params=[context_kwarg])
+            prune_params = [context_kwarg]
+        else:
+            prune_params = None
+
+        schema = compress_schema(schema, prune_params=prune_params)
 
         return cls(
             fn=fn,
