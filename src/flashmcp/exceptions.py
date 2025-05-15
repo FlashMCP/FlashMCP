@@ -1,5 +1,7 @@
 """Custom exceptions for FlashMCP."""
 
+from mcp import McpError  # noqa: F401
+
 
 class FlashMCPError(Exception):
     """Base error for FlashMCP."""
