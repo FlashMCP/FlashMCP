@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from FlashMCP import FlashMCP, Image
 from FlashMCP.client import Client
-from FlashMCP.exceptions import ClientError
+from FlashMCP.exceptions import ToolError
 from FlashMCP.tools.tool import Tool
 from FlashMCP.utilities.tests import temporary_settings
 
@@ -299,7 +299,7 @@ class TestLegacyToolJsonParsing:
 
         async with Client(mcp) as client:
             with pytest.raises(
-                ClientError,
+                ToolError,
                 match="Error calling tool 'process_list'",
             ):
                 await client.call_tool("process_list", {"items": "['a', 'b', 3]"})
