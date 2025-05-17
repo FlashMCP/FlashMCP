@@ -1,4 +1,3 @@
-import pytest
 from FlashMCP.server import FlashMCP
 from FlashMCP.server.http import create_sse_app, create_streamable_http_app
 
