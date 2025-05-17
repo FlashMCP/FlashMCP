@@ -213,7 +213,6 @@ class FlashMCP(Generic[LifespanResultT]):
         Args:
             transport: Transport protocol to use ("stdio", "sse", or "streamable-http")
         """
-        logger.debug(f'Starting server "{self.name}"...')
 
         anyio.run(partial(self.run_async, transport, **transport_kwargs))
 
