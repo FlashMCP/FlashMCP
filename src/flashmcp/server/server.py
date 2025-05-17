@@ -1125,6 +1125,7 @@ class FlashMCP(Generic[LifespanResultT]):
         :class:`~FlashMCP.client.Client`. This mirrors the convenience of the
         ``Client`` constructor.
         """
+        from FlashMCP.client.client import Client
         from FlashMCP.server.proxy import FlashMCPProxy
 
         if isinstance(backend, Client):
