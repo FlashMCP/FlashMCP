@@ -8,7 +8,9 @@ import { VersionBadge } from '/snippets/version-badge.mdx'
 
 <VersionBadge version="2.0.0" />
 
-FlashMCP provides a powerful proxying capability that allows one FlashMCP server instance to act as a frontend for another MCP server (which could be remote, running on a different transport, or even another FlashMCP instance). This is achieved using the `FlashMCP.from_client()` class method.
+FlashMCP provides a powerful proxying capability that allows one FlashMCP server instance to act as a frontend for another MCP server (which could be remote, running on a different transport, or even another FlashMCP instance). This is achieved using the `FlashMCP.as_proxy()` class method.
+
+`as_proxy()` accepts either an existing `Client` or any argument that can be passed to a `Client` as its `transport` parameter&mdash;such as another `FlashMCP` instance or a URL to a remote server.
 
 ## What is Proxying?
 
@@ -37,26 +39,23 @@ sequenceDiagram
 
 ## Creating a Proxy
 
-The easiest way to create a proxy is using the `FlashMCP.from_client()` class method. This creates a standard FlashMCP server that forwards requests to another MCP server.
+The easiest way to create a proxy is using the `FlashMCP.as_proxy()` class method. This creates a standard FlashMCP server that forwards requests to another MCP server.
 
 ```python
-from FlashMCP import FlashMCP, Client
+from FlashMCP import FlashMCP
 
-# Create a client configured to talk to the backend server
-# This could be any MCP server - remote, local, or using any transport
-backend_client = Client("backend_server.py")  # Could be "http://remote.server/sse", etc.
-
-# Create the proxy server with from_client()
-proxy_server = FlashMCP.from_client(
-    backend_client,
+# Provide the backend in any form accepted by Client
+proxy_server = FlashMCP.as_proxy(
+    "backend_server.py",  # Could also be a FlashMCP instance or a remote URL
     name="MyProxyServer"  # Optional settings for the proxy
 )
 
-# That's it! You now have a proxy FlashMCP server that can be used
-# with any transport (SSE, stdio, etc.) just like any other FlashMCP server
+# Or create the Client yourself for custom configuration
+backend_client = Client("backend_server.py")
+proxy_from_client = FlashMCP.as_proxy(backend_client)
 ```
 
-**How `from_client` Works:**
+**How `as_proxy` Works:**
 
 1.  It connects to the backend server using the provided client.
 2.  It discovers all the tools, resources, resource templates, and prompts available on the backend server.
@@ -72,13 +71,10 @@ Currently, proxying focuses primarily on exposing the major MCP objects (tools, 
 A common use case is to bridge transports. For example, making a remote SSE server available locally via Stdio:
 
 ```python
-from FlashMCP import FlashMCP, Client
+from FlashMCP import FlashMCP
 
-# Client targeting a remote SSE server
-client = Client("http://example.com/mcp/sse")
-
-# Create a proxy server - it's just a regular FlashMCP server
-proxy = FlashMCP.from_client(client, name="SSE to Stdio Proxy")
+# Target a remote SSE server directly by URL
+proxy = FlashMCP.as_proxy("http://example.com/mcp/sse", name="SSE to Stdio Proxy")
 
 # The proxy can now be used with any transport
 # No special handling needed - it works like any FlashMCP server
@@ -89,7 +85,7 @@ proxy = FlashMCP.from_client(client, name="SSE to Stdio Proxy")
 You can also proxy an in-memory `FlashMCP` instance, which is useful for adjusting the configuration or behavior of a server you don't completely control.
 
 ```python
-from FlashMCP import FlashMCP, Client
+from FlashMCP import FlashMCP
 
 # Original server
 original_server = FlashMCP(name="Original")
@@ -98,12 +94,9 @@ original_server = FlashMCP(name="Original")
 def tool_a() -> str: 
     return "A"
 
-# To proxy an in-memory server, first create a Client to it.
-client_to_original = Client(original_server)
-
-# Create a proxy of the original server using the client.
-proxy = FlashMCP.from_client(
-    client_to_original,
+# Create a proxy of the original server directly
+proxy = FlashMCP.as_proxy(
+    original_server,
     name="Proxy Server"
 )
 
@@ -113,6 +106,6 @@ proxy = FlashMCP.from_client(
 
 ## `FlashMCPProxy` Class
 
-Internally, `FlashMCP.from_client()` uses the `FlashMCPProxy` class. You generally don't need to interact with this class directly, but it's available if needed.
+Internally, `FlashMCP.as_proxy()` uses the `FlashMCPProxy` class. You generally don't need to interact with this class directly, but it's available if needed.
 
 Using the class directly might be necessary for advanced scenarios, like subclassing `FlashMCPProxy` to add custom logic before or after forwarding requests. 

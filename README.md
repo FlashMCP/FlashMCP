@@ -261,7 +261,7 @@ FlashMCP introduces powerful ways to structure and deploy your MCP applications.
 
 ### Proxy Servers
 
-Create a FlashMCP server that acts as an intermediary for another local or remote MCP server using `FlashMCP.from_client()`. This is especially useful for bridging transports (e.g., remote SSE to local Stdio) or adding a layer of logic to a server you don't control.
+Create a FlashMCP server that acts as an intermediary for another local or remote MCP server using `FlashMCP.as_proxy()`. This is especially useful for bridging transports (e.g., remote SSE to local Stdio) or adding a layer of logic to a server you don't control.
 
 Learn more in the [**Proxying Documentation**](https://goFlashMCP.com/patterns/proxy).
 

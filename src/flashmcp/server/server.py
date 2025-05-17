@@ -11,6 +11,7 @@ from contextlib import (
     asynccontextmanager,
 )
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal
 
 import anyio
@@ -60,6 +61,7 @@ from FlashMCP.utilities.logging import get_logger
 
 if TYPE_CHECKING:
     from FlashMCP.client import Client
+    from FlashMCP.client.transports import ClientTransport
     from FlashMCP.server.openapi import FlashMCPOpenAPI
     from FlashMCP.server.proxy import FlashMCPProxy
 logger = get_logger(__name__)
@@ -1105,13 +1107,46 @@ class FlashMCP(Generic[LifespanResultT]):
         )
 
     @classmethod
+    def as_proxy(
+        cls,
+        backend: Client
+        | ClientTransport
+        | FlashMCP[Any]
+        | AnyUrl
+        | Path
+        | dict[str, Any]
+        | str,
+        **settings: Any,
+    ) -> FlashMCPProxy:
+        """Create a FlashMCP proxy server for the given backend.
+
+        The ``backend`` argument can be either an existing :class:`~FlashMCP.client.Client`
+        instance or any value accepted as the ``transport`` argument of
+        :class:`~FlashMCP.client.Client`. This mirrors the convenience of the
+        ``Client`` constructor.
+        """
+        from FlashMCP.server.proxy import FlashMCPProxy
+
+        if isinstance(backend, Client):
+            client = backend
+        else:
+            client = Client(backend)
+
+        return FlashMCPProxy(client=client, **settings)
+
+    @classmethod
     def from_client(cls, client: Client, **settings: Any) -> FlashMCPProxy:
         """
         Create a FlashMCP proxy server from a FlashMCP client.
         """
-        from FlashMCP.server.proxy import FlashMCPProxy
+        # Deprecated since 2.4.0
+        warnings.warn(
+            "FlashMCP.from_client() is deprecated; use FlashMCP.as_proxy() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        return FlashMCPProxy(client=client, **settings)
+        return cls.as_proxy(client, **settings)
 
 
 def _validate_resource_prefix(prefix: str) -> None:

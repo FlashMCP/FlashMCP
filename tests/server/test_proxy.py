@@ -66,7 +66,7 @@ def FlashMCP_server():
 @pytest.fixture
 async def proxy_server(FlashMCP_server):
     """Fixture that creates a FlashMCP proxy server."""
-    return FlashMCP.from_client(Client(transport=FlashMCPTransport(FlashMCP_server)))
+    return FlashMCP.as_proxy(Client(transport=FlashMCPTransport(FlashMCP_server)))
 
 
 async def test_create_proxy(FlashMCP_server):
@@ -79,6 +79,29 @@ async def test_create_proxy(FlashMCP_server):
     assert isinstance(server, FlashMCPProxy)
     assert isinstance(server, FlashMCP)
     assert server.name == "FlashMCP"
+
+
+async def test_as_proxy_with_server(FlashMCP_server):
+    """FlashMCP.as_proxy should accept a FlashMCP instance."""
+    proxy = FlashMCP.as_proxy(FlashMCP_server)
+    result = await proxy._mcp_call_tool("greet", {"name": "Test"})
+    assert isinstance(result[0], mcp.types.TextContent)
+    assert result[0].text == "Hello, Test!"
+
+
+async def test_as_proxy_with_transport(FlashMCP_server):
+    """FlashMCP.as_proxy should accept a ClientTransport."""
+    proxy = FlashMCP.as_proxy(FlashMCPTransport(FlashMCP_server))
+    result = await proxy._mcp_call_tool("greet", {"name": "Test"})
+    assert isinstance(result[0], mcp.types.TextContent)
+    assert result[0].text == "Hello, Test!"
+
+
+def test_as_proxy_with_url():
+    """FlashMCP.as_proxy should accept a URL without connecting."""
+    proxy = FlashMCP.as_proxy("http://example.com/mcp")
+    assert isinstance(proxy, FlashMCPProxy)
+    assert repr(proxy.client.transport).startswith("<StreamableHttp(")
 
 
 class TestTools:
