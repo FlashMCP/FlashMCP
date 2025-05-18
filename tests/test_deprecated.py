@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from starlette.applications import Starlette
 
-from FlashMCP import FlashMCP
+from FlashMCP import Client, FlashMCP
 
 
 def test_FlashMCP_kwargs_settings_deprecation_warning():
@@ -91,3 +91,10 @@ def test_http_app_with_sse_transport():
             w for w in recorded_warnings if issubclass(w.category, DeprecationWarning)
         ]
         assert len(deprecation_warnings) == 0
+
+
+def test_from_client_deprecation_warning():
+    """Test that FlashMCP.from_client raises a deprecation warning."""
+    server = FlashMCP("TestServer")
+    with pytest.warns(DeprecationWarning, match="from_client"):
+        FlashMCP.from_client(Client(server))
