@@ -74,7 +74,7 @@ async def test_create_proxy(FlashMCP_server):
     # Create a client
     client = Client(transport=FlashMCPTransport(FlashMCP_server))
 
-    server = FlashMCPProxy.from_client(client)
+    server = FlashMCPProxy.as_proxy(client)
 
     assert isinstance(server, FlashMCPProxy)
     assert isinstance(server, FlashMCP)
