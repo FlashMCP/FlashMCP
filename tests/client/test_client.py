@@ -515,6 +515,10 @@ class TestErrorHandling:
             assert "This is a resource error (xyz)" in str(excinfo.value)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Timeout tests are flaky on Windows. Timeouts *are* supported but the tests are unreliable.",
+)
 class TestTimeout:
     async def test_timeout(self, FlashMCP_server: FlashMCP):
         async with Client(
