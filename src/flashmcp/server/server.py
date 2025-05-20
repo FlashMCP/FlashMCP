@@ -62,7 +62,7 @@ from FlashMCP.utilities.logging import get_logger
 if TYPE_CHECKING:
     from FlashMCP.client import Client
     from FlashMCP.client.transports import ClientTransport
-    from FlashMCP.server.openapi import FlashMCPOpenAPI
+    from FlashMCP.server.openapi import FlashMCPOpenAPI, RouteMap
     from FlashMCP.server.proxy import FlashMCPProxy
 logger = get_logger(__name__)
 
@@ -1082,24 +1082,59 @@ class FlashMCP(Generic[LifespanResultT]):
 
     @classmethod
     def from_openapi(
-        cls, openapi_spec: dict[str, Any], client: httpx.AsyncClient, **settings: Any
+        cls,
+        openapi_spec: dict[str, Any],
+        client: httpx.AsyncClient,
+        route_maps: list[RouteMap] | None = None,
+        all_routes_as_tools: bool = False,
+        **settings: Any,
     ) -> FlashMCPOpenAPI:
         """
         Create a FlashMCP server from an OpenAPI specification.
         """
-        from .openapi import FlashMCPOpenAPI
+        from .openapi import FlashMCPOpenAPI, RouteMap, RouteType
 
-        return FlashMCPOpenAPI(openapi_spec=openapi_spec, client=client, **settings)
+        if all_routes_as_tools and route_maps:
+            raise ValueError("Cannot specify both all_routes_as_tools and route_maps")
+
+        elif all_routes_as_tools:
+            route_maps = [
+                RouteMap(
+                    methods="*",
+                    pattern=r".*",
+                    route_type=RouteType.TOOL,
+                )
+            ]
+
+        return FlashMCPOpenAPI(
+            openapi_spec=openapi_spec,
+            client=client,
+            route_maps=route_maps,
+            **settings,
+        )
 
     @classmethod
     def from_fastapi(
-        cls, app: Any, name: str | None = None, **settings: Any
+        cls,
+        app: Any,
+        name: str | None = None,
+        route_maps: list[RouteMap] | None = None,
+        all_routes_as_tools: bool = False,
+        **settings: Any,
     ) -> FlashMCPOpenAPI:
         """
         Create a FlashMCP server from a FastAPI application.
         """
 
-        from .openapi import FlashMCPOpenAPI
+        from .openapi import FlashMCPOpenAPI, RouteMap, RouteType
+
+        if all_routes_as_tools and route_maps:
+            raise ValueError("Cannot specify both all_routes_as_tools and route_maps")
+
+        elif all_routes_as_tools:
+            route_maps = [
+                RouteMap(methods="*", pattern=r".*", route_type=RouteType.TOOL)
+            ]
 
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://fastapi"
@@ -1108,7 +1143,11 @@ class FlashMCP(Generic[LifespanResultT]):
         name = name or app.title
 
         return FlashMCPOpenAPI(
-            openapi_spec=app.openapi(), client=client, name=name, **settings
+            openapi_spec=app.openapi(),
+            client=client,
+            name=name,
+            route_maps=route_maps,
+            **settings,
         )
 
     @classmethod
