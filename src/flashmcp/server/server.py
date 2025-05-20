@@ -1145,7 +1145,7 @@ class FlashMCP(Generic[LifespanResultT]):
         """
         Create a FlashMCP proxy server from a FlashMCP client.
         """
-        # Deprecated since 2.4.0
+        # Deprecated since 2.3.5
         warnings.warn(
             "FlashMCP.from_client() is deprecated; use FlashMCP.as_proxy() instead.",
             DeprecationWarning,
