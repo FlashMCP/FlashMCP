@@ -7,7 +7,12 @@ from mcp import McpError
 from pydantic import AnyUrl
 
 from FlashMCP.client import Client
-from FlashMCP.client.transports import FlashMCPTransport
+from FlashMCP.client.transports import (
+    FlashMCPTransport,
+    SSETransport,
+    StreamableHttpTransport,
+    infer_transport,
+)
 from FlashMCP.exceptions import ResourceError, ToolError
 from FlashMCP.prompts.prompt import TextContent
 from FlashMCP.server.server import FlashMCP
@@ -540,6 +545,10 @@ class TestTimeout:
             with pytest.raises(McpError):
                 await client.call_tool("sleep", {"seconds": 0.1}, timeout=0.01)
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="This test is flaky on Windows. Sometimes the client timeout is respected and sometimes it is not.",
+    )
     async def test_timeout_tool_call_overrides_client_timeout_even_if_lower(
         self, FlashMCP_server: FlashMCP
     ):
@@ -548,3 +557,53 @@ class TestTimeout:
             timeout=0.01,
         ) as client:
             await client.call_tool("sleep", {"seconds": 0.1}, timeout=2)
+
+
+class TestInferTransport:
+    """Tests for the infer_transport function."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://example.com/api/sse/stream",
+            "https://localhost:8080/mcp/sse/endpoint",
+            "http://example.com/api/sse",
+            "https://localhost:8080/mcp/sse",
+            "http://example.com/api/sse?param=value",
+            "https://localhost:8080/mcp/sse/?param=value",
+            "https://localhost:8000/mcp/sse?x=1&y=2",
+        ],
+        ids=[
+            "path_with_sse_directory",
+            "path_with_sse_subdirectory",
+            "path_ending_with_sse",
+            "path_ending_with_sse_https",
+            "path_with_sse_and_query_params",
+            "path_with_sse_slash_and_query_params",
+            "path_with_sse_and_ampersand_param",
+        ],
+    )
+    def test_url_returns_sse_transport(self, url):
+        """Test that URLs with /sse/ pattern return SSETransport."""
+        assert isinstance(infer_transport(url), SSETransport)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://example.com/api",
+            "https://localhost:8080/mcp",
+            "http://example.com/asset/image.jpg",
+            "https://localhost:8080/sservice/endpoint",
+            "https://example.com/assets/file",
+        ],
+        ids=[
+            "regular_http_url",
+            "regular_https_url",
+            "url_with_unrelated_path",
+            "url_with_sservice_in_path",
+            "url_with_assets_in_path",
+        ],
+    )
+    def test_url_returns_streamable_http_transport(self, url):
+        """Test that URLs without /sse/ pattern return StreamableHttpTransport."""
+        assert isinstance(infer_transport(url), StreamableHttpTransport)
