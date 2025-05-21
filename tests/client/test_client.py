@@ -673,7 +673,7 @@ class TestInferTransport:
         assert transport.transport.command == "echo"
         assert transport.transport.args == ["hello"]
 
-    def test_infer_composite_client(config):
+    def test_infer_composite_client(self):
         config = {
             "mcpServers": {
                 "local": {
@@ -689,4 +689,17 @@ class TestInferTransport:
         transport = infer_transport(config)
         assert isinstance(transport, MCPConfigTransport)
         assert isinstance(transport.transport, FlashMCPTransport)
-        assert len(transport.transport.server._mounted_servers) == 2
+        assert len(cast(FlashMCP, transport.transport.server)._mounted_servers) == 2
+
+    def test_infer_FlashMCP_server(self, FlashMCP_server):
+        """FlashMCP server instances should infer to FlashMCPTransport."""
+        transport = infer_transport(FlashMCP_server)
+        assert isinstance(transport, FlashMCPTransport)
+
+    def test_infer_FlashMCP_v1_server(self):
+        """FlashMCP 1.0 server instances should infer to FlashMCPTransport."""
+        from mcp.server.FlashMCP import FlashMCP as FlashMCP1
+
+        server = FlashMCP1()
+        transport = infer_transport(server)
+        assert isinstance(transport, FlashMCPTransport)
