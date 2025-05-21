@@ -58,6 +58,7 @@ from FlashMCP.tools.tool import Tool
 from FlashMCP.utilities.cache import TimedCache
 from FlashMCP.utilities.decorators import DecoratedFunction
 from FlashMCP.utilities.logging import get_logger
+from FlashMCP.utilities.mcp_config import MCPConfig
 
 if TYPE_CHECKING:
     from FlashMCP.client import Client
@@ -1206,6 +1207,7 @@ class FlashMCP(Generic[LifespanResultT]):
         | FlashMCP[Any]
         | AnyUrl
         | Path
+        | MCPConfig
         | dict[str, Any]
         | str,
         **settings: Any,

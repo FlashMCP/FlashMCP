@@ -25,6 +25,7 @@ from FlashMCP.client.sampling import SamplingHandler, create_sampling_callback
 from FlashMCP.exceptions import ToolError
 from FlashMCP.server import FlashMCP
 from FlashMCP.utilities.exceptions import get_catch_handlers
+from FlashMCP.utilities.mcp_config import MCPConfig
 
 from .transports import ClientTransport, SessionKwargs, infer_transport
 
@@ -53,6 +54,7 @@ class Client:
             - FlashMCP: In-process FlashMCP server
             - AnyUrl | str: URL to connect to
             - Path: File path for local socket
+            - MCPConfig: MCP server configuration
             - dict: Transport configuration
         roots: Optional RootsList or RootsHandler for filesystem access
         sampling_handler: Optional handler for sampling requests
@@ -77,7 +79,13 @@ class Client:
 
     def __init__(
         self,
-        transport: ClientTransport | FlashMCP | AnyUrl | Path | dict[str, Any] | str,
+        transport: ClientTransport
+        | FlashMCP
+        | AnyUrl
+        | Path
+        | MCPConfig
+        | dict[str, Any]
+        | str,
         # Common args
         roots: RootsList | RootsHandler | None = None,
         sampling_handler: SamplingHandler | None = None,
