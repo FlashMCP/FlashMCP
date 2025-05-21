@@ -24,6 +24,7 @@ from pydantic import AnyUrl
 from typing_extensions import Unpack
 
 from FlashMCP.server import FlashMCP as FlashMCPServer
+from FlashMCP.server.server import FlashMCP
 from FlashMCP.utilities.logging import get_logger
 from FlashMCP.utilities.mcp_config import MCPConfig, infer_transport_type_from_url
 
@@ -74,7 +75,7 @@ class ClientTransport(abc.ABC):
             A mcp.ClientSession instance.
         """
         raise NotImplementedError
-        yield None  # type: ignore
+        yield  # type: ignore
 
     def __repr__(self) -> str:
         # Basic representation for subclasses
@@ -455,7 +456,7 @@ class FlashMCPTransport(ClientTransport):
     """
 
     def __init__(self, mcp: FlashMCPServer):
-        self._FlashMCP = mcp  # Can be FlashMCP or MCPServer
+        self.server = mcp  # Can be FlashMCP or MCPServer
 
     @contextlib.asynccontextmanager
     async def connect_session(
@@ -463,13 +464,50 @@ class FlashMCPTransport(ClientTransport):
     ) -> AsyncIterator[ClientSession]:
         # create_connected_server_and_client_session manages the session lifecycle itself
         async with create_connected_server_and_client_session(
-            server=self._FlashMCP._mcp_server,
+            server=self.server._mcp_server,
             **session_kwargs,
         ) as session:
             yield session
 
     def __repr__(self) -> str:
-        return f"<FlashMCP(server='{self._FlashMCP.name}')>"
+        return f"<FlashMCP(server='{self.server.name}')>"
+
+
+class MCPConfigTransport(ClientTransport):
+    """Transport for running MCPConfig."""
+
+    def __init__(self, config: MCPConfig | dict):
+        from FlashMCP.client.client import Client
+
+        if isinstance(config, dict):
+            config = MCPConfig.from_dict(config)
+        self.config = config
+
+        # if there's exactly one server, create a client for that server
+        if len(self.config.mcpServers) == 1:
+            self.transport = list(self.config.mcpServers.values())[0].to_transport()
+
+        # otherwise create a composite client
+        else:
+            composite_server = FlashMCP()
+
+            for name, server in self.config.mcpServers.items():
+                server_client = Client(transport=server.to_transport())
+                composite_server.mount(
+                    prefix=name, server=FlashMCP.as_proxy(server_client)
+                )
+
+            self.transport = FlashMCPTransport(mcp=composite_server)
+
+    @contextlib.asynccontextmanager
+    async def connect_session(
+        self, **session_kwargs: Unpack[SessionKwargs]
+    ) -> AsyncIterator[ClientSession]:
+        async with self.transport.connect_session(**session_kwargs) as session:
+            yield session
+
+    def __repr__(self) -> str:
+        return f"<MCPConfig(config='{self.config}')>"
 
 
 def infer_transport(
@@ -519,16 +557,7 @@ def infer_transport(
 
     # if the transport is a config dict or MCPConfig
     elif isinstance(transport, dict | MCPConfig):
-        if isinstance(transport, dict):
-            config = MCPConfig.from_dict(transport)
-        else:
-            config = transport
-        inferred_transports = config.to_transports()
-        if len(inferred_transports) > 1:
-            raise ValueError(
-                "Invalid transport dictionary: multiple servers found - only one expected"
-            )
-        inferred_transport = list(inferred_transports.values())[0]
+        inferred_transport = MCPConfigTransport(config=transport)
 
     # the transport is an unknown type
     else:
