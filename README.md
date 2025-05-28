@@ -4,14 +4,13 @@
 # FlashMCP 🚀
 <strong>The fast, Pythonic way to build MCP servers and clients.</strong>
 
-> [!NOTE]
 > #### FlashMCP & The Official MCP SDK
 >
 > Recognize the `FlashMCP` name? You might have seen the version that was contributed to the official MCP Python SDK
 >
 > **Welcome to FlashMCP!** This is the actively developed by introducing powerful client capabilities, server proxying & composition, OpenAPI/FastAPI integration, and more advanced features.
 >
-> FlashMCP is the recommended path for building modern, powerful MCP applications. Ready to upgrade or get started? Follow the [installation instructions](xxx), which include specific steps for upgrading from the official MCP SDK.
+> FlashMCP is the recommended path for building modern, powerful MCP applications. Ready to upgrade or get started? Follow the [installation instructions](https://flashmcpdocs.com/getting-started/installation), which include specific steps for upgrading from the official MCP SDK.
 
 ---
 
@@ -39,7 +38,7 @@ FlashMCP run server.py
 
 ### 📚 Documentation
 
-FlashMCP's complete documentation is available at **[goFlashMCP.com](xxx)**, including detailed guides, API references, and advanced patterns. This readme provides only a high-level overview.
+FlashMCP's complete documentation is available at **[flashmcpdocs.com/](https://flashmcpdocs.com/)**, including detailed guides, API references, and advanced patterns. This readme provides only a high-level overview.
 
 Documentation is also available in [llms.txt format](https://llmstxt.org/), which is a simple markdown standard that LLMs can consume easily. 
 
@@ -82,7 +81,7 @@ We recommend installing FlashMCP with [uv](https://docs.astral.sh/uv/):
 uv pip install FlashMCP
 ```
 
-For full installation instructions, including verification, upgrading from the official MCPSDK, and developer setup, see the [**Installation Guide**](xxx).
+For full installation instructions, including verification, upgrading from the official MCPSDK, and developer setup, see the [**Installation Guide**](https://flashmcpdocs.com/getting-started/installation).
 
 ## Core Concepts
 
@@ -90,7 +89,7 @@ These are the building blocks for creating MCP servers and clients with FlashMCP
 
 ### The `FlashMCP` Server
 
-The central object representing your MCP application. It holds your tools, resources, and prompts, manages connections, and can be configured with settings like [authentication providers](xxx).
+The central object representing your MCP application. It holds your tools, resources, and prompts, manages connections, and can be configured with settings like [authentication providers](https://flashmcpdocs.com/deployment/authentication).
 
 ```python
 from FlashMCP import FlashMCP
@@ -99,11 +98,11 @@ from FlashMCP import FlashMCP
 mcp = FlashMCP(name="MyAssistantServer")
 ```
 
-Learn more in the [**FlashMCP Server Documentation**](xxx).
+Learn more in the [**FlashMCP Server Documentation**](https://flashmcpdocs.com/servers/proxy).
 
 ### Tools
 
-Tools allow LLMs to perform actions by executing your Python functions (sync or async). Ideal for computations, API calls, or side effects (like `POST`/`PUT`). FlashMCP handles schema generation from type hints and docstrings. Tools can return various types, including text, JSON-serializable objects, and even images using the [`FlashMCP.Image`](xxx) helper.
+Tools allow LLMs to perform actions by executing your Python functions (sync or async). Ideal for computations, API calls, or side effects (like `POST`/`PUT`). FlashMCP handles schema generation from type hints and docstrings. Tools can return various types, including text, JSON-serializable objects, and even images using the [`FlashMCP.Image`]() helper.
 
 ```python
 @mcp.tool()
@@ -112,7 +111,7 @@ def multiply(a: float, b: float) -> float:
     return a * b
 ```
 
-Learn more in the [**Tools Documentation**](xxx).
+Learn more in the [**Tools Documentation**](https://flashmcpdocs.com/servers/tools).
 
 ### Resources & Templates
 
@@ -131,7 +130,7 @@ def get_profile(user_id: int):
     return {"name": f"User {user_id}", "status": "active"}
 ```
 
-Learn more in the [**Resources & Templates Documentation**](xxx).
+Learn more in the [**Resources & Templates Documentation**](https://flashmcpdocs.com/servers/resources).
 
 ### Prompts
 
@@ -144,7 +143,7 @@ def summarize_request(text: str) -> str:
     return f"Please summarize the following text:\n\n{text}"
 ```
 
-Learn more in the [**Prompts Documentation**](xxx).
+Learn more in the [**Prompts Documentation**]().
 
 ### Context
 
@@ -178,7 +177,7 @@ async def process_data(uri: str, ctx: Context):
     return summary.text
 ```
 
-Learn more in the [**Context Documentation**](xxx).
+Learn more in the [**Context Documentation**](https://flashmcpdocs.com/servers/context).
 
 ### MCP Clients
 
@@ -239,7 +238,7 @@ async def main():
         answer = await client.call_tool("assistant_answer_question", {"query": "What is MCP?"})
 ```
 
-Learn more in the [**Client Documentation**](xxx) and [**Transports Documentation**](xxx).
+Learn more in the [**Client Documentation**](https://flashmcpdocs.com/clients/client) and [**Transports Documentation**](https://flashmcpdocs.com/clients/transports).
 
 ## Advanced Features
 
@@ -249,19 +248,19 @@ FlashMCP introduces powerful ways to structure and deploy your MCP applications.
 
 Create a FlashMCP server that acts as an intermediary for another local or remote MCP server using `FlashMCP.as_proxy()`. This is especially useful for bridging transports (e.g., remote SSE to local Stdio) or adding a layer of logic to a server you don't control.
 
-Learn more in the [**Proxying Documentation**](xxx).
+Learn more in the [**Proxying Documentation**](https://flashmcpdocs.com/servers/proxy).
 
 ### Composing MCP Servers
 
 Build modular applications by mounting multiple `FlashMCP` instances onto a parent server using `mcp.mount()` (live link) or `mcp.import_server()` (static copy).
 
-Learn more in the [**Composition Documentation**](xxx).
+Learn more in the [**Composition Documentation**](https://flashmcpdocs.com/servers/composition).
 
 ### OpenAPI & FastAPI Generation
 
 Automatically generate FlashMCP servers from existing OpenAPI specifications (`FlashMCP.from_openapi()`) or FastAPI applications (`FlashMCP.from_fastapi()`), instantly bringing your web APIs to the MCP ecosystem.
 
-Learn more: [**OpenAPI Integration**](xxx) | [**FastAPI Integration**](xxx).
+Learn more: [**OpenAPI Integration**](https://flashmcpdocs.com/patterns/openapi) | [**FastAPI Integration**](https://flashmcpdocs.com/patterns/fastapi).
 
 ## Running Your Server
 
@@ -298,7 +297,7 @@ mcp.run(transport="streamable-http", host="127.0.0.1", port=8000, path="/mcp")
 mcp.run(transport="sse", host="127.0.0.1", port=8000)
 ```
 
-See the [**Running Server Documentation**](xxx) for more details.
+See the [**Running Server Documentation**](https://flashmcpdocs.com/deployment/running-server) for more details.
 
 ## Contributing
 
